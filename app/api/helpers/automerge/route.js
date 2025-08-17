@@ -1,5 +1,5 @@
-export async function POST(req) {
+export async function POST(req){
   const { owner, repo, prNumber, allow } = await req.json();
-  // TODO: if allow && label present && policy-approved, call GitHub merge
-  return new Response(JSON.stringify({ ok:true, attempted: !!allow }), { status:200 });
+  // Placeholder: would call GitHub merge if policies pass
+  return new Response(JSON.stringify({ ok:true, attempt: !!allow }), { status:200 });
 }
