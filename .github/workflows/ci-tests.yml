@@ -13,20 +13,16 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
-
       - name: Install dependencies
         run: npm ci || npm install
-
-      - name: Debug: list test files
+      - name: "Debug: list test files"
         run: |
           echo "Listing *.test.mjs files:"
           git ls-files | grep -E '(^|/)tests/.*\.test\.mjs$' || true
-
       - name: Run tests (node --test with find)
         run: |
           set -euo pipefail
