@@ -2,8 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import * as heartbeat from '../app/api/heartbeat/route.js';
-import { setDisabled } from '../lib/security/guard.mjs';
+import * as heartbeat from '../lib/routes/heartbeat.mjs';
 
 function b64url(b){ return Buffer.from(b).toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_'); }
 const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
