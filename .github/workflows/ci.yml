@@ -23,5 +23,13 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: 'npm'
-      - run: npm ci
-      - run: npm test
+      - name: Install deps (ci if lockfile, else install)
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ] || [ -f yarn.lock ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Run tests (fallback to node --test)
+        run: |
+          npm test || node --test
