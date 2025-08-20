@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Setup Node with cache ONLY when a lockfile exists.
+      # Cache only when lockfile exists
       - name: Setup Node (with npm cache)
         if: ${{ hashFiles('**/package-lock.json', '**/npm-shrinkwrap.json', '**/yarn.lock') != '' }}
         uses: actions/setup-node@v4
@@ -42,7 +42,7 @@ jobs:
             npm install
           fi
 
-      - name: Run tests
+      - name: Run tests with coverage (fallback-safe)
         run: |
           set -e
           echo "Trying npm test..."
@@ -50,12 +50,14 @@ jobs:
             echo "npm test succeeded."
             exit 0
           fi
-          echo "npm test unavailable or failed; falling back to Node's test runner."
           FILES="$(find tests -type f -name '*.mjs' | sort || true)"
           if [ -z "$FILES" ]; then
             echo "No .mjs tests found under ./tests — skipping."
             exit 0
           fi
-          echo "Running node --test on:"
-          echo "$FILES"
-          node --test $FILES
+          echo "Attempting Node coverage run..."
+          if node --test --coverage -e "''" >/dev/null 2>&1; then
+            node --test --coverage $FILES
+          else
+            npx --yes c8 -r text -r lcov node --test $FILES
+          fi
