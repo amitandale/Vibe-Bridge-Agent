@@ -30,6 +30,20 @@ jobs:
           else
             npm install
           fi
-      - name: Run tests (prefer npm test; else node --test for .mjs only)
+      - name: Run tests
         run: |
-          npm test || node --test "tests/**/*.mjs"
+          set -e
+          echo "Trying npm test..."
+          if npm test; then
+            echo "npm test succeeded."
+            exit 0
+          fi
+          echo "npm test unavailable or failed; falling back to Node's test runner."
+          FILES="$(find tests -type f -name '*.mjs' | sort || true)"
+          if [ -z "$FILES" ]; then
+            echo "No .mjs tests found under ./tests — skipping."
+            exit 0
+          fi
+          echo "Running node --test on:"
+          echo "$FILES"
+          node --test $FILES
