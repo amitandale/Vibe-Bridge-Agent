@@ -30,6 +30,6 @@ jobs:
           else
             npm install
           fi
-      - name: Run tests (fallback to node --test)
+      - name: Run tests (prefer npm test; else node --test for .mjs only)
         run: |
-          npm test || node --test
+          npm test || node --test "tests/**/*.mjs"

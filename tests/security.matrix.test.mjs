@@ -1,13 +1,29 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { requireBridgeGuards, setDisabled } from '../lib/security/guard.mjs';
 
 const PROFILE = process.env.PROFILE || 'serverless';
 
+function req(h={}){
+  return new Request('http://br/api/run-agent', { method:'POST', headers: h, body: '{}' });
+}
+
 test(`run-agent requires signature and ticket (${PROFILE})`, async () => {
-  const body = JSON.stringify({ mode:'fixed-diff', owner:'o', repo:'r', base:'main', title:'t', diff:'--- a\n+++ b\n' });
-  // Missing signature
-  let res = await fetch('http://localhost/api/run-agent', { method:'POST', body });
-  // In our test shim, just assert non-OK (401/403)
-  assert.ok(!res.ok);
+  let r = requireBridgeGuards(req({ 'x-vibe-ticket':'t' }));
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'MISSING_SIGNATURE');
+
+  r = requireBridgeGuards(req({ 'x-signature':'sha256=abc' }));
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'MISSING_TICKET');
+
+  setDisabled(true);
+  r = requireBridgeGuards(req({ 'x-signature':'sha256=abc', 'x-vibe-ticket':'t' }));
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'DISABLED');
+
+  setDisabled(false);
+  r = requireBridgeGuards(req({ 'x-signature':'sha256=abc', 'x-vibe-ticket':'t' }));
+  assert.equal(r.ok, true);
 });
