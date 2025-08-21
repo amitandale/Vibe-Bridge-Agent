@@ -1,20 +1,8 @@
 {
   "name": "bridge-agent",
-  "private": true,
-  "version": "0.1.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "node --test tests/_runner.mjs",
-    "coverage": "npx c8 -r text -r lcov npm run test"
-  },
-  "dependencies": {
-    "next": "14.2.6",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "octokit": "^3.2.1",
-    "@octokit/auth-app": "^7.0.0",
-    "zod": "^3.23.8"
+    "pretest": "mkdir -p coverage/tmp",
+    "test": "NODE_V8_COVERAGE=coverage/tmp node --test tests/_runner.mjs",
+    "coverage": "npx c8 report --reporter=text && npx c8 report --reporter=lcov"
   }
 }
