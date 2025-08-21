@@ -1,0 +1,24 @@
+name: ci-test-coverage
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: npm ci || npm i
+      - name: Test (node --test via c8)
+        run: npm run -s test
+      - name: Show coverage summary
+        run: npx c8 report --reporter=text
+      - name: Upload lcov
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
