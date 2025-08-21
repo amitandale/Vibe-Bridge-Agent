@@ -16,5 +16,6 @@
     "octokit": "^3.2.1",
     "@octokit/auth-app": "^7.0.0",
     "zod": "^3.23.8"
-  }
+  },
+  "devDependencies": {}
 }
