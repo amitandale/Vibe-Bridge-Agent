@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test \"tests/**/*.mjs\"",
+    "test": "node --test tests",
     "coverage": "npx c8 -r text -r lcov npm run test"
   },
   "dependencies": {
@@ -16,6 +16,5 @@
     "octokit": "^3.2.1",
     "@octokit/auth-app": "^7.0.0",
     "zod": "^3.23.8"
-  },
-  "devDependencies": {}
+  }
 }
