@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test tests",
+    "test": "node --test tests/_runner.mjs",
     "coverage": "npx c8 -r text -r lcov npm run test"
   },
   "dependencies": {
