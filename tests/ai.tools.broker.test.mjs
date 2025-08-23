@@ -1,4 +1,5 @@
-import { test, strict as assert } from 'node:test';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promises as fs } from 'node:fs';
