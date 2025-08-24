@@ -1,63 +1,46 @@
-
-name: CI
+name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        profile: [serverless, longrun]
-        node: [18]
     env:
-      PROFILE: ${{ matrix.profile }}
+      # Use the built-in Actions token with write permissions.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Pin the destination app repository explicitly (as requested).
+      GITHUB_REPO: "amitandale/App-Test"
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Cache only when lockfile exists
-      - name: Setup Node (with npm cache)
-        if: ${{ hashFiles('**/package-lock.json', '**/npm-shrinkwrap.json', '**/yarn.lock') != '' }}
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-          cache: 'npm'
+          node-version: "18.20.0"
+          cache: "npm"
 
-      - name: Setup Node (no cache)
-        if: ${{ hashFiles('**/package-lock.json', '**/npm-shrinkwrap.json', '**/yarn.lock') == '' }}
-        uses: actions/setup-node@v4
+      - name: Install
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Coverage (lcov + text)
+        run: npm run coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install deps (ci if lockfile, else install)
-        run: |
-          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ] || [ -f yarn.lock ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-      - name: Run tests with coverage (fallback-safe)
-        run: |
-          set -e
-          echo "Trying npm test..."
-          if npm test; then
-            echo "npm test succeeded."
-            exit 0
-          fi
-          FILES="$(find tests -type f -name '*.mjs' | sort || true)"
-          if [ -z "$FILES" ]; then
-            echo "No .mjs tests found under ./tests — skipping."
-            exit 0
-          fi
-          echo "Attempting Node coverage run..."
-          if node --test --coverage -e "''" >/dev/null 2>&1; then
-            node --test --coverage $FILES
-          else
-            npx --yes c8 -r text -r lcov node --test $FILES
-          fi
+          name: coverage-lcov
+          path: ./coverage/lcov.info
+          if-no-files-found: ignore
