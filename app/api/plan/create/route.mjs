@@ -1,4 +1,4 @@
-import { createPlanItem } from '../../../lib/plan/store.mjs';
+import { createPlanItem } from '../../../../lib/plan/store.mjs';
 
 export async function POST(req) {
   try {

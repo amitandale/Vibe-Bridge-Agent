@@ -1,4 +1,4 @@
-import { listPlanItems } from '../../../lib/plan/store.mjs';
+import { listPlanItems } from '../../../../lib/plan/store.mjs';
 
 export async function GET(req) {
   try {
