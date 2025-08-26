@@ -2,7 +2,7 @@
   "name": "bridge-agent",
   "scripts": {
     "pretest": "mkdir -p coverage/tmp",
-    "test": "NODE_V8_COVERAGE=coverage/tmp node --test tests/_runner.mjs",
+    "test": "NODE_V8_COVERAGE=coverage/tmp node --test \"tests/**/*.test.mjs\" \"tests/**/*.test.js\"",
     "coverage": "npx c8 report --reporter=text && npx c8 report --reporter=lcov"
   }
 }
