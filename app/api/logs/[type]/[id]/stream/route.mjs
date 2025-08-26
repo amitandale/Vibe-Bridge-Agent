@@ -32,7 +32,7 @@ export async function GET(req, { params }){
   // Heartbeat
   const timer = setInterval(() => { if (alive) send(`:keepalive\n\n`).catch(()=>{}); }, heartbeatMs);
 
-  // Also clear on stream close to avoid leaked intervals during tests
+  // Clear when stream writer closes (consumer finished)
   ;(async () => { try { await writer.closed; } finally { clearInterval(timer); stop(); } })();
 
   // Close on client abort
