@@ -11,7 +11,17 @@ export async function POST(req) {
   if (!verify(raw, req.headers.get("x-signature"), process.env.BRIDGE_SECRET))
     return new Response(JSON.stringify({ ok:false, error:"SIGNATURE_INVALID" }), { status:401 });
 
-  const { owner, repoName, template } = JSON.parse(raw||"{}");
-  // For safety, stub successful response; real impl should create repo via GitHub App
-  return new Response(JSON.stringify({ ok:true, repoUrl:`https://github.com/${owner||"org"}/${repoName||"repo"}`, prUrl:null }), { status:200 });
+  let owner='', repoName='', template='';
+  try {
+    const j = JSON.parse(raw||"{}");
+    owner = j.owner || '';
+    repoName = j.repoName || '';
+    template = j.template || '';
+  } catch {
+    return new Response(JSON.stringify({ ok:false, error:"BAD_JSON" }), { status:400 });
+  }
+  //
+  // ... would call GitHub to create repo from template, setup webhooks, etc.
+  //
+  return new Response(JSON.stringify({ ok:true, owner, repoName, template }), { status:200 });
 }
