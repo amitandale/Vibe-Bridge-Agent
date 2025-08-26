@@ -17,4 +17,4 @@ function walk(d) {
   }
 }
 walk(root);
-await Promise.all(files.map(f => import(url.pathToFileURL(f).href)));
+for (const f of files) { await import(url.pathToFileURL(f).href); }
