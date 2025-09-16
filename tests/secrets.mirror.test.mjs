@@ -14,10 +14,6 @@ test('mirror to repo secrets uses installation token and encrypts values', async
   await Secrets.upsertEnv({ projectId: 'p3', name: 'APP_URL', value: 'http://x', scope: 'global' });
   await Secrets.upsertEnv({ projectId: 'p3', name: 'HMAC_SECRET', value: 'shhh', scope: 'lane', lane: 'ci' });
 
-  // Mock token broker
-  const TB = await import('../lib/github/tokenBroker.mjs');
-  TB.getInstallationTokenForProject = async () => ({ token: 't-123' });
-
   // Fake fetch pipeline that records calls
   const calls = [];
   const http = async (url, init={}) => {
@@ -30,8 +26,9 @@ test('mirror to repo secrets uses installation token and encrypts values', async
 
   // Deterministic encryptFn for test
   const encryptFn = (pub, val) => `enc(${pub}:${val})`;
+  const getInstallationToken = async () => ({ token: 't-123' });
 
-  const r = await mirrorRepoSecrets({ projectId: 'p3', lane: 'ci', http, encryptFn });
+  const r = await mirrorRepoSecrets({ projectId: 'p3', lane: 'ci', http, encryptFn, getInstallationToken });
   assert.equal(r.owner, 'octo'); assert.equal(r.repo, 'hello');
   // Two PUTs: APP_URL and HMAC_SECRET
   const puts = calls.filter(c => c.init?.method === 'PUT');

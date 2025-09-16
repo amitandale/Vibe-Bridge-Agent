@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { listMirrorableNames, getEnvForLane } from '../../../lib/repo/secrets.mjs';
 import { get as getProject } from '../../../lib/repo/projects.mjs';
-import { getInstallationTokenForProject } from '../../../lib/github/tokenBroker.mjs';
+import { getInstallationTokenForProject as _getInstallationTokenForProject } from '../../../lib/github/tokenBroker.mjs';
 
 /** Encrypt value using GitHub Actions public key (libsodium sealed box).
  * If encryptFn is passed, use it (for tests). Otherwise load libsodium-wrappers.
@@ -16,9 +16,7 @@ async function encryptWithKey(publicKeyBase64, value, encryptFn){
   return sodium.to_base64(enc, sodium.base64_variants.ORIGINAL);
 }
 
-function mask(s){ if (!s) return ''; const n = String(s); return n.length <= 4 ? '****' : n.slice(0,2) + '****' + n.slice(-2); }
-
-export async function mirrorRepoSecrets({ projectId, lane='ci', only=[], http, encryptFn } = {}){
+export async function mirrorRepoSecrets({ projectId, lane='ci', only=[], http, encryptFn, getInstallationToken } = {}){
   if (!projectId) throw new Error('MISSING_PROJECT_ID');
   const row = getProject(projectId);
   const owner = row?.repo_owner || row?.owner || '';
@@ -26,9 +24,13 @@ export async function mirrorRepoSecrets({ projectId, lane='ci', only=[], http, e
   if (!owner || !repo) throw new Error('PROJECT_NOT_BOUND');
 
   const env = await getEnvForLane(projectId, lane);
-  const names = (only && only.length ? only : Object.keys(env)).filter(n => n && n.toUpperCase() !== n ? true : true);
-  const mirror = names.filter(n => n && n.trim()).filter(n => n && n.toUpperCase() !== ''); // keep simple
-  const tokenObj = await getInstallationTokenForProject(projectId);
+  const names = (only && only.length ? only : Object.keys(env));
+  const mirror = names.filter(Boolean);
+
+  // Installation token via injectable provider or default broker
+  const tokenObj = getInstallationToken
+    ? await getInstallationToken(projectId)
+    : await _getInstallationTokenForProject(projectId);
   const token = tokenObj.token;
 
   const fetchLike = http || globalThis.fetch;
@@ -41,11 +43,12 @@ export async function mirrorRepoSecrets({ projectId, lane='ci', only=[], http, e
   const { key_id, key } = data;
   if (!key_id || !key) throw new Error('NO_PUBLIC_KEY');
 
+  const deny = ['OPENAI_API_KEY','ANTHROPIC_API_KEY','GOOGLE_API_KEY','GEMINI_API_KEY','MISTRAL_API_KEY','LLM_API_KEY'];
+
   // Mirror each env var
   const results = [];
   for (const name of mirror){
-    // skip LLM keys
-    if (['OPENAI_API_KEY','ANTHROPIC_API_KEY','GOOGLE_API_KEY','GEMINI_API_KEY','MISTRAL_API_KEY','LLM_API_KEY'].includes(name.toUpperCase())) continue;
+    if (deny.includes(String(name).toUpperCase())) continue;
     const plaintext = env[name];
     if (typeof plaintext === 'undefined') continue;
     const encrypted_value = await encryptWithKey(key, String(plaintext), encryptFn);
@@ -54,7 +57,6 @@ export async function mirrorRepoSecrets({ projectId, lane='ci', only=[], http, e
     results.push({ name, status: res.status || 200 });
   }
 
-  // Safe summary
   return { owner, repo, lane, mirrored: results.map(r => r.name) };
 }
 
