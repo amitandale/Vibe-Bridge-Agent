@@ -1,5 +1,4 @@
 // app/api/projects/bind/route.mjs
-import { NextResponse } from 'next/server';
 import { setRepoBinding, validateOwner, validateRepo } from '../../../../lib/repo/projects.mjs';
 
 async function mirrorToSaaS(payload){
@@ -28,14 +27,14 @@ async function mirrorToSaaS(payload){
 export async function POST(req){
   const { projectId, owner, repo } = await req.json();
   if (!projectId || !validateOwner(owner) || !validateRepo(repo)){
-    return NextResponse.json({ ok:false, error: 'INVALID_INPUT' }, { status: 400 });
+    return new Response(JSON.stringify({ ok:false, error: 'INVALID_INPUT' ), { status: 400, headers: { 'content-type': 'application/json' } });
   }
   try {
     setRepoBinding(projectId, { owner, repo });
   } catch (e){
-    return NextResponse.json({ ok:false, error: e.message || 'ERROR' }, { status: 400 });
+    return new Response(JSON.stringify({ ok:false, error: e.message || 'ERROR' ), { status: 400, headers: { 'content-type': 'application/json' } });
   }
   // Best effort mirror
   const mirrored = await mirrorToSaaS({ projectId, owner, repo });
-  return NextResponse.json({ ok:true, projectId, owner, repo, mirrored });
+  return new Response(JSON.stringify({ ok:true, projectId, owner, repo, mirrored });
 }
