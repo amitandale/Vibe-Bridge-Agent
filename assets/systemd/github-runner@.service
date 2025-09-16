@@ -1,0 +1,16 @@
+# assets/systemd/github-runner@.service
+# Templated reference. Actual unit is rendered per project/lane at install time.
+[Unit]
+Description=GitHub Runner (%i)
+After=network.target
+
+[Service]
+User=devops
+WorkingDirectory=/opt/github-runner/%i
+ExecStart=/opt/github-runner/%i/runsvc.sh
+KillSignal=SIGINT
+TimeoutStopSec=60
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
