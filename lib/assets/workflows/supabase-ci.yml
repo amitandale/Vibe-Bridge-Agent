@@ -1,0 +1,15 @@
+name: Supabase CI
+
+on:
+  pull_request:
+  push:
+    branches: [work]
+
+jobs:
+  ci:
+    runs-on: [self-hosted, vibe, __PROJECT__, __LANE__]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show lane and project
+        run: |
+          echo "project=__PROJECT__ lane=__LANE__"
