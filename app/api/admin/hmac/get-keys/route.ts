@@ -1,3 +1,4 @@
+import { requireBridgeGuardsAsync } from '../../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../../lib/security/guard.mjs';
 // app/api/admin/hmac/get-keys/route.ts
 // Minimal stub. In real BA-03 this reads DB. Here it reads the in-memory store via hmac module.

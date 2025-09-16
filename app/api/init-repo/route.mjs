@@ -1,3 +1,4 @@
+import { requireBridgeGuardsAsync } from '../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../lib/security/guard.mjs';
 import crypto from "crypto";
 

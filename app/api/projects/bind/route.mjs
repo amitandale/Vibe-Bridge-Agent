@@ -1,3 +1,4 @@
+import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 // app/api/projects/bind/route.mjs
 import { setRepoBinding, validateOwner, validateRepo } from '../../../../lib/repo/projects.mjs';

@@ -1,3 +1,4 @@
+import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 export async function POST(req){
   const { owner, repo, days } = await req.json();

@@ -1,3 +1,4 @@
+import { requireBridgeGuardsAsync } from '../../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../../lib/security/guard.mjs';
 // app/api/admin/hmac/put-rotate/route.ts
 // Minimal stub for rotation. For BA-03 this would validate admin ticket and write to DB.

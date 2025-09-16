@@ -1,3 +1,4 @@
+import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 // Bridge-Agent: optional log ingest endpoint (internal)
 import { append } from '../../../../../lib/logs/bus.mjs';
