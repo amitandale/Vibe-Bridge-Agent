@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  app:
+    image: alpine:3.20
+    command: ["sh", "-lc", "echo project=${PROJECT} lane=${LANE} port=${APP_PORT} && sleep 60"]
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    restart: unless-stopped
+    labels:
+      - "vibe.project=${PROJECT}"
+      - "vibe.lane=${LANE}"
