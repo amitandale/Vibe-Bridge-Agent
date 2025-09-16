@@ -1,16 +1,32 @@
-# assets/systemd/github-runner@.service
-# Templated reference. Actual unit is rendered per project/lane at install time.
 [Unit]
-Description=GitHub Runner (%i)
-After=network.target
+Description=GitHub Runner %i
+After=network-online.target docker.service
+Wants=network-online.target
 
 [Service]
-User=devops
-WorkingDirectory=/opt/github-runner/%i
-ExecStart=/opt/github-runner/%i/runsvc.sh
-KillSignal=SIGINT
-TimeoutStopSec=60
+Type=simple
+User=%i
+Group=docker
+WorkingDirectory=/opt/github-runner/%P/%L
+EnvironmentFile=/opt/github-runner/%P/%L/env/runner.env
+ExecStart=/opt/github-runner/%P/%L/bin/run.sh
 Restart=always
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+ReadWritePaths=/opt/github-runner/%P/%L /var/run/docker.sock
+LimitNOFILE=65536
+MemoryHigh=0
 
 [Install]
 WantedBy=multi-user.target
