@@ -1,3 +1,4 @@
+import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 export async function POST(req){
   const { owner, repo, prNumber, allow } = await req.json();
   // Placeholder: would call GitHub merge if policies pass

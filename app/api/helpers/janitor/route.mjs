@@ -1,3 +1,4 @@
+import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 export async function POST(req){
   const { owner, repo, days } = await req.json();
   // Placeholder: would close stale branches/PRs

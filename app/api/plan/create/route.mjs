@@ -1,3 +1,4 @@
+import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 import { createPlanItem } from '../../../../lib/plan/store.mjs';
 
 export async function POST(req) {

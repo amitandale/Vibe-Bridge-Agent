@@ -1,3 +1,4 @@
+import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 import { NextResponse } from 'next/server';
 import { createRun, updateRun } from '../../../../lib/ai/runs.mjs';
 import { composePR } from '../../../../lib/ai/orchestrator/run.mjs';

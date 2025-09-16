@@ -1,3 +1,4 @@
+import { requireBridgeGuards } from '../../../lib/security/guard.mjs';
 import crypto from "crypto";
 
 function verify(raw, sig, secret) {
