@@ -1,0 +1,10 @@
+{
+  "name": "bridge-agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/all.test.mjs",
+    "test:ci": "c8 -r text -r lcov node --test tests/all.test.mjs",
+    "coverage": "c8 report --reporter=text"
+  }
+}

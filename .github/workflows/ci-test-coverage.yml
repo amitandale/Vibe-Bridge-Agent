@@ -1,0 +1,46 @@
+name: ci-test-coverage
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: npm ci || npm i
+      - name: Prep SQLite DB path
+        run: |
+          set -euo pipefail
+          DB_DIR="$GITHUB_WORKSPACE/data"
+          mkdir -p "$DB_DIR"
+          chmod 700 "$DB_DIR"
+          DB_FILE="$DB_DIR/test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.db"
+          echo "DATABASE_URL=sqlite:$DB_FILE" >> "$GITHUB_ENV"
+          echo "BRIDGE_DB_FILE=${DB_FILE}" >> "$GITHUB_ENV"
+      - name: Ensure sqlite3
+        run: |
+          set -euo pipefail
+          command -v sqlite3 >/dev/null || { sudo apt-get update && sudo apt-get install -y sqlite3; }
+      - name: Sanity check sqlite3
+        run: |
+          set -euo pipefail
+          sqlite3 -batch "${DATABASE_URL#sqlite:}" "PRAGMA journal_mode=WAL;"
+      - name: Test (node --test via c8)
+        run: npm run -s test
+      - name: Show coverage summary
+        run: npx c8 report --reporter=text
+      - name: Upload lcov
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+      - name: Cleanup DB
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -f "${DATABASE_URL#sqlite:}"

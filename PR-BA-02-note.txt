@@ -1,0 +1,21 @@
+PR-BA-02 — HMAC KMS (per-project request signing)
+
+Scope:
+- lib/security/hmac.mjs: key lookup, dual-key verify with rotation grace, constant-time compare.
+- lib/security/rawBody.mjs: raw bytes reader for Next/Express.
+- lib/security/guard.mjs: export requireHmac().
+- app/api/admin/hmac/get-keys + put-rotate: stubs.
+- scripts/hmac/seed.mjs: one-shot seeder.
+- tests/security/hmac.lib.test.mjs + tests/security/hmac.middleware.test.mjs.
+
+Env:
+- HMAC_ROTATION_GRACE_S default 604800.
+- Optional BOOTSTRAP_* envs for seeding via script.
+
+Invariants:
+- At most two active keys supported in store. Previous accepted only within grace.
+- sha256= prefix enforced; constant-time compare.
+- Middleware fails-closed with 401 (no key) or 403 (mismatch).
+
+Future:
+- Replace in-memory store with DB-backed secrets table in BA-03.

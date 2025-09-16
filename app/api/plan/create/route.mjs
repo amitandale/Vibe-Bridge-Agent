@@ -1,0 +1,28 @@
+import { createPlanItem } from '../../../../lib/plan/store.mjs';
+
+export async function POST(req) {
+  try {
+    const j = await req.json();
+    const projectId = j?.projectId || process.env.PROJECT_ID || 'default';
+    const item = await createPlanItem({
+      projectId,
+      title: j?.title,
+      prompt: j?.prompt,
+      scope: j?.scope,
+      tests: j?.tests,
+      acceptance: j?.acceptance,
+      status: 'PLANNED',
+    });
+    return new Response(JSON.stringify({ id: item.id }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  } catch (e) {
+    const msg = e?.message || 'UNKNOWN';
+    const code = msg.startsWith('MISSING_') ? 400 : 500;
+    return new Response(JSON.stringify({ error: msg }), {
+      status: code,
+      headers: { 'content-type': 'application/json' }
+    });
+  }
+}

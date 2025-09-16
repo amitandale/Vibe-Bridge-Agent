@@ -1,0 +1,10 @@
+{
+  "reporter": [
+    "text"
+  ],
+  "reports-dir": "./coverage",
+  "temp-directory": "./coverage/tmp",
+  "omit-relative": false,
+  "exclude-node-modules": true,
+  "allowExternal": false
+}

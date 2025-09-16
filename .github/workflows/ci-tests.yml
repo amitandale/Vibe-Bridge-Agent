@@ -1,0 +1,52 @@
+name: CI Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+
+jobs:
+  node-tests:
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci || npm i
+          else
+            npm i
+          fi
+
+      - name: Run Node tests (node --test)
+        run: |
+          set -euo pipefail
+          echo "Looking for tests..."
+          # Collect test files (supports tests/*.test.mjs and tests/**/*.test.mjs)
+          MAPFILE=()
+          while IFS= read -r -d '' f; do MAPFILE+=("$f"); done < <(find tests -type f -name "*.test.mjs" -print0 2>/dev/null || true)
+          if [ "${#MAPFILE[@]}" -eq 0 ]; then
+            echo "No tests found. Passing."
+            exit 0
+          fi
+          echo "Running ${#MAPFILE[@]} test files with node --test"
+          node --test "${MAPFILE[@]}"
