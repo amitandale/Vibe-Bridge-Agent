@@ -41,7 +41,7 @@ test('e2e smoke: installs from mocked bundle dir and enables unit', async () => 
   const bundle = await import('../lib/runner/bundle.mjs');
 
   const r = await installRunner(
-    { projectId:'p1', lane:'ci', rootBase, projectsBase, bundlePath: bundleDir },
+    { projectId:'p1', lane:'ci', rootBase, projectsBase, bundlePath: bundleDir, systemdDir: path.join(rootBase, 'units') },
     { projects, github, systemd, hostfs, capacityAdapters, bundle }
   );
 
