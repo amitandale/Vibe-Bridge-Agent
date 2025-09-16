@@ -1,0 +1,22 @@
+name: supabase-ci
+
+on:
+  push:
+    branches: ["work", "vibe/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    runs-on: [__LABELS__]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run -s lint || echo "no lint script"
+      - name: Test
+        run: npm test
