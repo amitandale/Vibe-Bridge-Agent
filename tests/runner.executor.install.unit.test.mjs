@@ -5,7 +5,7 @@ import { installRunner } from '../lib/runner/executor.mjs';
 
 function mkAdapters({ capOk=true }={}){
   const capacityAdapters = {
-    fs: { async exists(){return true;}, async mkdir(){}, async chmod(){}, async stat(){return {mode:0o750,uid:1000,gid:1000}}, async statvfs(){return { bavail: 100n, frsize: 1024n }} },
+    fs: { async exists(){return true;}, async mkdir(){}, async chmod(){}, async stat(){return {mode:0o750,uid:1000,gid:1000}}, async statvfs(){ return { bavail: 50_000_000n, frsize: 4096n } } },
     sys: { async nproc(){return 4}, async loadavg1(){return 0.5}, async memAvailableBytes(){return 8*1024**3} },
     docker: { async ping(){return true}, async composeActiveProjects(){return []} },
     net: { async listeningSockets(){return []} },
