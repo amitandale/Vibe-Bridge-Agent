@@ -3,8 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tokenClient } from '../lib/github.mjs';
 
-test('tokenClient requires token', () => {
+test('tokenClient requires token', async () => {
   let threw=false;
-  try { tokenClient(); } catch { threw=true; }
+  try { await tokenClient(); } catch { threw=true; }
   assert.equal(threw, true);
 });
