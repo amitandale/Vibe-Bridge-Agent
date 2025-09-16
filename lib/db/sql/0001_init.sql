@@ -14,10 +14,11 @@ CREATE TABLE IF NOT EXISTS project (
 );
 
 CREATE TABLE IF NOT EXISTS secret (
+  
   id TEXT PRIMARY KEY,
   kid TEXT NOT NULL,
   project_id TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type='HMAC'),
+  type TEXT NOT NULL DEFAULT 'HMAC' CHECK(type='HMAC'),
   value TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   rotated_at INTEGER NULL,
