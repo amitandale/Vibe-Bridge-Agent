@@ -2,6 +2,7 @@
 BEGIN;
 PRAGMA foreign_keys=ON;
 -- Core migration history table is created by migrate() if missing. Schema objects follow.
+
 CREATE TABLE IF NOT EXISTS project (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -14,11 +15,13 @@ CREATE TABLE IF NOT EXISTS project (
 
 CREATE TABLE IF NOT EXISTS secret (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL,
   kid TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  type TEXT NOT NULL CHECK(type='HMAC'),
   value TEXT NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
+  rotated_at INTEGER NULL,
+  active INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
@@ -26,7 +29,7 @@ CREATE TABLE IF NOT EXISTS nonce (
   id TEXT PRIMARY KEY,
   purpose TEXT NOT NULL,
   seen_at INTEGER NOT NULL,
-  ttl_s INTEGER NOT NULL
+  ttl_s INTEGER NOT NULL CHECK(ttl_s >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS session (
@@ -37,7 +40,7 @@ CREATE TABLE IF NOT EXISTS session (
   pr_budget INTEGER NOT NULL DEFAULT 0,
   per_pr_ms INTEGER NOT NULL DEFAULT 0,
   roster_json TEXT NOT NULL DEFAULT '[]',
-  status TEXT NOT NULL DEFAULT 'running',
+  status TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
@@ -45,8 +48,9 @@ CREATE TABLE IF NOT EXISTS job (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
   type TEXT NOT NULL,
-  state TEXT NOT NULL DEFAULT 'queued',
+  state TEXT NOT NULL,
   idempotency_key TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   FOREIGN KEY(session_id) REFERENCES session(id) ON DELETE CASCADE
 );
 
@@ -55,7 +59,7 @@ CREATE TABLE IF NOT EXISTS pr (
   project_id TEXT NOT NULL,
   branch TEXT NOT NULL,
   url TEXT,
-  state TEXT NOT NULL DEFAULT 'open',
+  state TEXT NOT NULL,
   last_commit TEXT,
   FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
 );
@@ -64,7 +68,7 @@ CREATE TABLE IF NOT EXISTS event (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL,
   ts INTEGER NOT NULL,
-  payload_json TEXT NOT NULL DEFAULT '{}',
+  payload_json TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
