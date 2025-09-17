@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import { requireHmac } from '../../../../lib/security/guard.mjs';
+
 
 function verify(raw, sig, secret) {
   const h = crypto.createHmac("sha256", secret); h.update(raw);
@@ -7,6 +9,8 @@ function verify(raw, sig, secret) {
 }
 
 export async function POST(req) {
+  // HMAC-INJECTED
+  await requireHmac()(req);
   const raw = await req.text();
   if (!verify(raw, req.headers.get("x-signature"), process.env.BRIDGE_SECRET))
     return new Response(JSON.stringify({ ok:false, error:"SIGNATURE_INVALID" }), { status:401 });

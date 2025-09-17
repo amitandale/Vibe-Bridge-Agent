@@ -1,9 +1,8 @@
+import { requireHmac } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 // app/api/projects/bind/route.mjs
 import { setRepoBinding, validateOwner, validateRepo } from '../../../../lib/repo/projects.mjs';
-import { requireHmac } from '../../../../../lib/security/guard.mjs';
-
 
 /**
  * Best-effort mirror of the binding to SaaS control plane.
@@ -41,8 +40,6 @@ async function mirrorToSaaS(payload){
 }
 
 export async function POST(req){
-  // HMAC-INJECTED
-  await requireHmac()(req);
   const { projectId, owner, repo } = await req.json();
 
   if (!projectId || !validateOwner(owner) || !validateRepo(repo)){
