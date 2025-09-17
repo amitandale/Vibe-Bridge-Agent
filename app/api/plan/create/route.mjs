@@ -1,12 +1,8 @@
 import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 import { createPlanItem } from '../../../../lib/plan/store.mjs';
-import { requireHmac } from '../../../../../lib/security/guard.mjs';
-
 
 export async function POST(req) {
-  // HMAC-INJECTED
-  await requireHmac()(req);
   try {
     const j = await req.json();
     const projectId = j?.projectId || process.env.PROJECT_ID || 'default';

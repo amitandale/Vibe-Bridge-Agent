@@ -4,12 +4,8 @@ import { NextResponse } from 'next/server';
 import { createRun, updateRun } from '../../../../lib/ai/runs.mjs';
 import { composePR } from '../../../../lib/ai/orchestrator/run.mjs';
 import { append as appendLog } from '../../../../lib/logs/bus.mjs'; // PR-L1 logs
-import { requireHmac } from '../../../../../lib/security/guard.mjs';
-
 
 export async function POST(req) {
-  // HMAC-INJECTED
-  await requireHmac()(req);
   const body = await req.json().catch(()=> ({}));
   const { projectRoot = process.cwd(), prompt = '', roster = [], ticket = null } = body || {};
   if (!prompt) return NextResponse.json({ ok:false, code:'BAD_INPUT' }, { status:400 });

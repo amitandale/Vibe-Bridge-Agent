@@ -1,10 +1,6 @@
 import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
 import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
-import { requireHmac } from '../../../../../lib/security/guard.mjs';
-
 export async function POST(req){
-  // HMAC-INJECTED
-  await requireHmac()(req);
   const { owner, repo, days } = await req.json();
   // Placeholder: would close stale branches/PRs
   return new Response(JSON.stringify({ ok:true, processed: 0 }), { status:200 });

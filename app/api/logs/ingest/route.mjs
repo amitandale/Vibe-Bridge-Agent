@@ -3,11 +3,7 @@ import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 // Bridge-Agent: optional log ingest endpoint (internal)
 import { append } from '../../../../../lib/logs/bus.mjs';
 import { NextResponse } from 'next/server';
-import { requireHmac } from '../../../../../lib/security/guard.mjs';
-
 export async function POST(req){
-  // HMAC-INJECTED
-  await requireHmac()(req);
   let body = {};
   try { body = await req.json(); } catch {}
   const { type, id, level='info', message='', meta } = body || {};
