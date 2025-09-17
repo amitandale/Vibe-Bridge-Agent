@@ -2,6 +2,7 @@ name: ci-test-coverage
 on:
   push:
   pull_request:
+
 jobs:
   test:
     runs-on: self-hosted
