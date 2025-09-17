@@ -1,3 +1,4 @@
+import { requireHmac } from '../../../lib/security/guard.mjs';
 
 import { requireBridgeGuards, setDisabled } from '../../../lib/security/guard.mjs';
 
