@@ -2,7 +2,7 @@
 // Unit tests for PR-BA-02 Overlay 1: lib/security/hmac.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { computeHmacHex, parseSignatureHeader, buildVerifier, DEFAULT_GRACE_S, constantTimeEqualHex } from '../../lib/security/hmac.mjs'
+import { computeHmacHex, parseSignatureHeader, buildVerifier, DEFAULT_GRACE_S, constantTimeEqualHex, sign } from '../../lib/security/hmac.mjs'
 
 function mkSecrets(records) {
   return async (projectId) => records.filter(r => r.project_id === projectId);
@@ -78,4 +78,14 @@ test('verify rejects tampered body', async () => {
     () => v.verify({ projectId, kid: curr.kid, signatureHeader: sig, rawBody: Buffer.from('abcd'), nowS }),
     (err) => err?.status === 403 && /BAD_SIGNATURE/.test(err.message)
   )
+})
+
+
+test('sign() returns sha256=<hex> header and matches computeHmacHex', () => {
+  const body = Buffer.from('xyz')
+  const sec = 'k'
+  const hdr = sign(sec, body)
+  const { alg, hex } = parseSignatureHeader(hdr)
+  assert.equal(alg, 'sha256')
+  assert.equal(hex, computeHmacHex(sec, body))
 })
