@@ -4,11 +4,7 @@ import { requireBridgeGuards } from '../../../../../lib/security/guard.mjs';
 // Minimal stub for rotation. For BA-03 this would validate admin ticket and write to DB.
 import { NextResponse } from 'next/server';
 import { _rotate } from '../../../../../lib/security/hmac.mjs';
-import { requireHmac } from '../../../../../../lib/security/guard.mjs';
-
 
 export async function PUT(){
-  // HMAC-INJECTED
-  await requireHmac()(request);
   return NextResponse.json({ ok: true, note: "stub" });
 }
