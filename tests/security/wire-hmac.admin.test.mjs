@@ -3,8 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import http from 'node:http';
-import { GET as GET_KEYS } from '../../app/api/admin/hmac/get-keys/route.ts';
-import { PUT as PUT_ROTATE } from '../../app/api/admin/hmac/put-rotate/route.ts';
+import { GET as GET_KEYS } from '../../app/api/admin/hmac/get-keys/route.mjs';
+import { PUT as PUT_ROTATE } from '../../app/api/admin/hmac/put-rotate/route.mjs';
 
 function b64u(buf){ return Buffer.from(buf).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function signJwt(payload, key){
