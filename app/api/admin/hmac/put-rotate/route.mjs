@@ -1,18 +1,15 @@
 // app/api/admin/hmac/put-rotate/route.mjs
 import { requireBridgeGuardsAsync } from '../../../../../lib/security/guard.mjs';
 import * as crypto from 'node:crypto';
-import * as HMAC from '../../../../../lib/security/hmac.mjs';
+function jsonResponse(body, { status = 200 } = {}) { return { status, async json(){ return body; } }; }
 
-// Minimal Response shim compatible with tests
-function jsonResponse(body, { status = 200 } = {}) {
-  return { status, async json(){ return body; } };
-}
-
-async function callRotate(projectId, kid, key) {
+async function callRotate(projectId, kid, key){
+  // Dynamic import to avoid ESM import cycles with guard.mjs <-> hmac.mjs
+  const HMAC = await import('../../../../../lib/security/hmac.mjs');
   const rotateNamed = HMAC?.rotate;
   const rotateUnderscore = HMAC?._rotate;
   if (typeof rotateNamed === 'function') {
-    try { const r = await rotateNamed({ projectId, kid, key }); if (r) return r; } catch {/* try underscore */}
+    try { const r = await rotateNamed({ projectId, kid, key }); if (r) return r; } catch {/* fallthrough */}
   }
   if (typeof rotateUnderscore === 'function') {
     const r = await rotateUnderscore(projectId, kid, key);
@@ -21,13 +18,12 @@ async function callRotate(projectId, kid, key) {
   return { projectId, kid };
 }
 
-function coerceKidsMaybe(projectId){
+async function listKidsMaybe(projectId){
   try {
-    const list = (HMAC?.listActiveForProject && typeof HMAC.listActiveForProject === 'function')
-      ? HMAC.listActiveForProject(projectId) : null;
-    if (list && typeof list.then === 'function'){
-      return list.then(arr => Array.isArray(arr) ? arr.map((k)=> (typeof k === 'string' ? { kid:k, active:true } : { kid: k?.kid ?? k?.id ?? String(k), active: !!k?.active })) : [])
-                 .catch(()=>[]);
+    const HMAC = await import('../../../../../lib/security/hmac.mjs');
+    if (typeof HMAC.listActiveForProject === 'function') {
+      const arr = await HMAC.listActiveForProject(projectId);
+      return Array.isArray(arr) ? arr.map((k)=> (typeof k === 'string' ? { kid:k, active:true } : { kid: k?.kid ?? k?.id ?? String(k), active: !!k?.active })) : [];
     }
   } catch {}
   return [];
@@ -37,11 +33,7 @@ export async function PUT(req){
   const headersIter = req?.headers && typeof req.headers[Symbol.iterator] === 'function' ? req.headers : new Map(Object.entries(req?.headers || {}));
   const headersObj = Object.fromEntries(headersIter);
   const auth = await requireBridgeGuardsAsync({ headers: headersObj }, { scope: ['bridge:admin'] });
-  if (!auth?.ok) {
-    const status = auth?.status ?? 401;
-    const body = auth?.body ?? { error: { code: 'ERR_JWT_INVALID' } };
-    return jsonResponse(body, { status });
-  }
+  if (!auth?.ok) return jsonResponse(auth?.body ?? { error:{code:'ERR_JWT_INVALID'} }, { status: auth?.status ?? 401 });
 
   const getH = (k) => (req?.headers?.get?.(k) ?? headersObj[k] ?? headersObj[k?.toLowerCase?.()]) ?? '';
   const contentType = String(getH('content-type') || '');
@@ -54,11 +46,7 @@ export async function PUT(req){
 
   if (!projectId) return jsonResponse({ error: { code: 'ERR_BAD_INPUT', message: 'missing projectId' } }, { status: 400 });
 
-  try {
-    await callRotate(projectId, kid, key);
-    let kids = await coerceKidsMaybe(projectId);
-    return jsonResponse({ ok: true, projectId, kid, rotated: true, kids }, { status: 200 });
-  } catch (e) {
-    return jsonResponse({ error: { code: 'ERR_INTERNAL', message: e?.message || 'failed' } }, { status: 500 });
-  }
+  await callRotate(projectId, kid, key);
+  const kids = await listKidsMaybe(projectId);
+  return jsonResponse({ ok: true, projectId, kid, rotated: true, kids }, { status: 200 });
 }
