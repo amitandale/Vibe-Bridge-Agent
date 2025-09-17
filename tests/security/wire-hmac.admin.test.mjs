@@ -42,6 +42,7 @@ class Req {
     [Symbol.iterator]: () => this._headers[Symbol.iterator]()
   };
   async json(){ return this._body || {}; }
+  get body(){ return this._body; }
 }
 
 await test('admin routes: rotate then list keys', async () => {
