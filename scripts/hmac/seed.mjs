@@ -1,14 +1,20 @@
 // scripts/hmac/seed.mjs
-import { _seed } from '../../lib/security/hmac.mjs';
+import { setHmacKey, setActiveHmacKid } from '../../lib/repo/secrets.mjs';
 
-const projectId = process.env.BOOTSTRAP_PROJECT_ID;
-const kid = process.env.BOOTSTRAP_HMAC_KID;
-const key = process.env.BOOTSTRAP_HMAC_KEY;
-
-if (!projectId || !kid || !key){
-  console.error('missing BOOTSTRAP_PROJECT_ID or BOOTSTRAP_HMAC_KID or BOOTSTRAP_HMAC_KEY');
-  process.exit(2);
+export async function main(env = process.env){
+  const projectId = env.BOOTSTRAP_PROJECT_ID;
+  const kid = env.BOOTSTRAP_HMAC_KID;
+  const key = env.BOOTSTRAP_HMAC_KEY;
+  if (!projectId || !kid || !key){
+    console.error('Missing BOOTSTRAP_* env vars');
+    process.exitCode = 1;
+    return { ok:false, code:'MISSING_ENV' };
+  }
+  await setHmacKey({ projectId, kid, key });
+  await setActiveHmacKid({ projectId, kid });
+  return { ok:true, projectId, kid };
 }
 
-_seed({ projectId, kid, key });
-console.log('seeded hmac key for', projectId, 'kid', kid);
+if (import.meta.url === `file://${process.argv[1]}`){
+  main().then(r => { if (r?.ok) console.log(JSON.stringify(r)); });
+}
