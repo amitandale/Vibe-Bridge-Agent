@@ -1,30 +1,25 @@
 // tests/security/secrets.store.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { listByProject, getByKid, upsert, rotate, setActive } from '../../lib/repo/secrets.mjs';
+import { setHmacKey, setActiveHmacKid, getActiveHmac, getByKid, listActiveForProject } from '../../lib/repo/secrets.mjs';
 import { rm } from 'node:fs/promises';
 
-test('secrets store upsert and list', async () => {
-  process.env.BA_LOCAL_STORE_PATH = './data/test.local.json';
-  try { await rm(process.env.BA_LOCAL_STORE_PATH); } catch {}
-  await upsert({ project_id: 'p1', kid: 'k1', value: 's1' });
-  let list = await listByProject('p1');
-  assert.equal(list.length >= 1, true);
-  const k1 = list.find(x=>x.kid==='k1');
-  assert.equal(!!k1, true);
-  assert.equal(k1.value, 's1');
+test('hmac store basic ops with main API', async () => {
+  // Use default DATA_PATH used by repo/secrets.mjs in main: ./data/secrets.json
+  try { await rm('./data/secrets.json'); } catch {}
 
-  await rotate({ project_id: 'p1', newKid:'k2', newKey:'s2', now: Date.now() });
-  list = await listByProject('p1');
-  const cur = list.find(x=>x.kid==='k2');
-  const prev = list.find(x=>x.kid==='k1');
-  assert.equal(cur.active, true);
-  assert.equal(prev.active, true);
+  await setHmacKey({ projectId: 'p1', kid: 'k1', key: 's1' });
+  await setActiveHmacKid({ projectId: 'p1', kid: 'k1' });
 
-  const g = await getByKid('k1');
-  assert.equal(g.project_id, 'p1');
+  const active = await getActiveHmac('p1');
+  assert.equal(active.kid, 'k1');
+  assert.equal(active.key, 's1');
 
-  await setActive({ project_id:'p1', kid:'k1' });
-  list = await listByProject('p1');
-  assert.equal(list.find(x=>x.kid==='k1').active, true);
+  const byKid = await getByKid('k1');
+  assert.equal(byKid.project_id, 'p1');
+  assert.equal(byKid.value, 's1');
+
+  const list = listActiveForProject('p1');
+  assert.ok(Array.isArray(list) && list.length === 1);
+  assert.equal(list[0].kid, 'k1');
 });
