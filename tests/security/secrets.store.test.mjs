@@ -16,7 +16,7 @@ test('hmac store basic ops with main API', async () => {
   assert.equal(active.key, 's1');
 
   const byKid = await getByKid('k1');
-  assert.equal(byKid.project_id, 'p1');
+  assert.equal(byKid.projectId, 'p1');
   assert.equal(byKid.value, 's1');
 
   const list = listActiveForProject('p1');
