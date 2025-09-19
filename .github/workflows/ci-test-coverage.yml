@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           sqlite3 -batch "${DATABASE_URL#sqlite:}" "PRAGMA journal_mode=WAL;"
-            - name: Syntax check (Node)
+      - name: Syntax check (Node)
           set -e
           node -v
           for d in lib scripts tests; do [ -d "$d" ] && find "$d" -type f \( -name '*.mjs' -o -name '*.js' \) -print0; done \
