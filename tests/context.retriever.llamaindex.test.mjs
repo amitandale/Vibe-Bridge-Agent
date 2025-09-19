@@ -1,13 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
 import { selectRetriever } from '../../lib/context/retrievers/select.mjs';
 
 test('llamaindex-remote retriever selected by env and calls remote with LI_TOP_K', async () => {
   const env = { BA_RETRIEVER: 'llamaindex-remote', LI_TOP_K: '2', PROJECT_ID: 'projZ', CI: 'true', LLAMAINDEX_URL: 'http://x' };
   const captured = [];
-  const fakeFetch = async (url, init) => {
-    const bodyStr = String(init.body || '');
+  const fakeFetch = async (_url, init) => {
+    const bodyStr = typeof init.body === 'string' ? init.body : '';
     captured.push(JSON.parse(bodyStr));
     return {
       ok: true,

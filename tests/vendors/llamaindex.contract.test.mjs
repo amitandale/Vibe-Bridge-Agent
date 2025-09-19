@@ -4,18 +4,16 @@ import { createHmac } from 'node:crypto';
 import { makeLlamaIndexClient } from '../../lib/vendors/llamaindex.client.mjs';
 
 test('llamaindex client signs and posts /query and /index/upsert', async () => {
-  let seen = [];
+  const seen = [];
   const fakeFetch = async (url, init) => {
-    const bodyStr = init.body ?? '';
+    const bodyStr = typeof init.body === 'string' ? init.body : '';
     const sig = createHmac('sha256', 'key123').update(Buffer.from(bodyStr)).digest('hex');
     const headers = init.headers;
-    // Check headers
     const get = (k) => headers.get ? headers.get(k) : headers[k.toLowerCase()] || headers[k];
     assert.equal(get('x-vibe-project'), 'projA');
     assert.equal(get('x-vibe-kid'), 'kid1');
     assert.equal(get('x-signature'), `sha256=${sig}`);
     seen.push({ url, body: bodyStr });
-    // Respond success
     return {
       ok: true,
       status: 200,
