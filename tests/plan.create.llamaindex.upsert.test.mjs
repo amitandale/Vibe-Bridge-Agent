@@ -37,11 +37,9 @@ test('plan create triggers best-effort llamaindex upsert when enabled', async ()
 
   const res = await route.POST(mockReq);
   assert.equal(res.status, 200);
-  // Give the fire-and-forget promise a chance to schedule
   await new Promise(r => setTimeout(r, 10));
   assert.equal(calls, 1);
 
-  // restore
   globalThis.fetch = oldFetch;
   Object.assign(process.env, prevEnv);
 });
