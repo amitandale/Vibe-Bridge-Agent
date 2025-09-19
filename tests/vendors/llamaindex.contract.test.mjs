@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { makeLlamaIndexClient } from '../../lib/vendors/llamaindex.client.mjs';
+import { makeLlamaIndexClient } from '../lib/vendors/llamaindex.client.mjs';
 
 test('llamaindex client signs and posts /query and /index/upsert', async () => {
   let seen = [];
