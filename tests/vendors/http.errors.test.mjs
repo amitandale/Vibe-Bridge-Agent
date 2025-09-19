@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { makeHttp } from '../../lib/vendors/http.mjs';
 import * as CodesMod from '../../lib/obs/errors.mjs';
 
-// Try to read Codes from repo. If not available during isolated run, skip exact equality.
-const Codes = CodesMod?.Codes || CodesMod?.default?.Codes || CodesMod?.default || CodesMod;
+// Resolve Codes export in a robust way across shapes.
+const Codes = (CodesMod && (CodesMod.Codes || (CodesMod.default && CodesMod.default.Codes) || CodesMod.default)) || CodesMod;
 
 function stubFetch(status) {
   return async () => ({
@@ -19,19 +19,18 @@ async function expectCodeForStatus(status, expectedName) {
   const http = makeHttp({ baseUrl: '', projectId: 'p', kid: 'k', key: 's', fetchImpl: stubFetch(status) });
   try {
     await http.post('/err', { body: '' });
-    if (status >= 400) throw new Error('expected throw');
+    if (status >= 400) {
+      throw new Error('expected throw');
+    }
   } catch (e) {
-    const expectedVal = Codes && Object.prototype.hasOwnProperty.call(Codes, expectedName) ? Codes[expectedName] : undefined;
-    if (expectedVal !== undefined) {
-      assert.equal(e.code, expectedVal, `status ${status} → ${expectedName}`);
+    const hasExpected = !!(Codes && Object.prototype.hasOwnProperty.call(Codes, expectedName));
+    if (hasExpected) {
+      assert.equal(e.code, Codes[expectedName], `status ${status} → ${expectedName}`);
     } else {
-      // Repo does not define this code constant; assert presence and string type for portability.
+      // If the repo does not define this constant, ensure we still return a string code.
       assert.ok(e.code, `missing error code for status ${status}`);
       assert.equal(typeof e.code, 'string');
     }
-  }
-}
-    assert.equal(e.code, Codes[expectedName], `status ${status} → ${expectedName}`);
   }
 }
 
