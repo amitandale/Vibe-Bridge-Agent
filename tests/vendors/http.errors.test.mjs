@@ -21,11 +21,16 @@ async function expectCodeForStatus(status, expectedName) {
     await http.post('/err', { body: '' });
     if (status >= 400) throw new Error('expected throw');
   } catch (e) {
-    if (!Codes) {
-      // Fallback: only assert it has some code
-      assert.ok(e.code, 'missing error code');
-      return;
+    const expectedVal = Codes && Object.prototype.hasOwnProperty.call(Codes, expectedName) ? Codes[expectedName] : undefined;
+    if (expectedVal !== undefined) {
+      assert.equal(e.code, expectedVal, `status ${status} → ${expectedName}`);
+    } else {
+      // Repo does not define this code constant; assert presence and string type for portability.
+      assert.ok(e.code, `missing error code for status ${status}`);
+      assert.equal(typeof e.code, 'string');
     }
+  }
+}
     assert.equal(e.code, Codes[expectedName], `status ${status} → ${expectedName}`);
   }
 }
