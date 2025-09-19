@@ -6,7 +6,7 @@ export async function POST(req) {
   try {
     const j = await req.json();
     const projectId = j?.projectId || process.env.PROJECT_ID || 'default';
-    const item = await createPlanItem({
+const item = await createPlanItem({
       projectId,
       title: j?.title,
       prompt: j?.prompt,
@@ -15,7 +15,20 @@ export async function POST(req) {
       acceptance: j?.acceptance,
       status: 'PLANNED',
     });
-    return new Response(JSON.stringify({ id: item.id }), {
+    // Optional best-effort upsert to LlamaIndex
+    try {
+      if ((process.env.LI_UPSERT_ON_PLAN || 'false').toString().toLowerCase() === 'true') {
+        const changed = Array.isArray(j?.changedFiles) ? j.changedFiles : [];
+        if (changed.length > 0) {
+          const { makeLlamaIndexClient } = await import('../../../../lib/vendors/llamaindex.client.mjs');
+          const client = makeLlamaIndexClient();
+          // Minimal doc mapping: caller should pass { path, mime, content, modifiedAt }
+          const docs = changed.map(x => (typeof x === 'string' ? { path: x, mime: 'text/plain', content: '' } : x));
+          client.upsert({ projectId, docs, idempotencyKey: `plan-${item.id}` }).catch(() => {});
+        }
+      }
+    } catch {}
+return new Response(JSON.stringify({ id: item.id }), {
       status: 200,
       headers: { 'content-type': 'application/json' }
     });
