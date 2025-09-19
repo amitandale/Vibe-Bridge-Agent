@@ -1,12 +1,12 @@
-import { requireBridgeGuardsAsync } from '../../../../lib/security/guard.mjs';
-import { requireBridgeGuards } from '../../../../lib/security/guard.mjs';
 import { createPlanItem } from '../../../../lib/plan/store.mjs';
+import { makeLlamaIndexClient } from '../../../../lib/vendors/llamaindex.client.mjs';
 
 export async function POST(req) {
   try {
-    const j = await req.json();
+    const j = await req.json().catch(() => ({}));
     const projectId = j?.projectId || process.env.PROJECT_ID || 'default';
-const item = await createPlanItem({
+
+    const item = await createPlanItem({
       projectId,
       title: j?.title,
       prompt: j?.prompt,
@@ -14,30 +14,40 @@ const item = await createPlanItem({
       tests: j?.tests,
       acceptance: j?.acceptance,
       status: 'PLANNED',
+      changedFiles: Array.isArray(j?.changedFiles) ? j.changedFiles : [],
     });
-    // Optional best-effort upsert to LlamaIndex
-    try {
-      if ((process.env.LI_UPSERT_ON_PLAN || 'false').toString().toLowerCase() === 'true') {
-        const changed = Array.isArray(j?.changedFiles) ? j.changedFiles : [];
-        if (changed.length > 0) {
-          const { makeLlamaIndexClient } = await import('../../../../lib/vendors/llamaindex.client.mjs');
-          const client = makeLlamaIndexClient();
-          // Minimal doc mapping: caller should pass { path, mime, content, modifiedAt }
-          const docs = changed.map(x => (typeof x === 'string' ? { path: x, mime: 'text/plain', content: '' } : x));
-          client.upsert({ projectId, docs, idempotencyKey: `plan-${item.id}` }).catch(() => {});
-        }
-      }
-    } catch {}
-return new Response(JSON.stringify({ id: item.id }), {
+
+    // Fire-and-forget LlamaIndex upsert if enabled.
+    if (String(process.env.LI_UPSERT_ON_PLAN).toLowerCase() === 'true') {
+      try {
+        // schedule after response cycle
+        setTimeout(async () => {
+          try {
+            const client = makeLlamaIndexClient(); // uses env + global fetch in CI
+            const docs = (Array.isArray(j?.changedFiles) ? j.changedFiles : []).map((f, i) => ({
+              id: f.id || `doc_${i}`,
+              path: f.path || f.filepath || `file_${i}`,
+              mime: f.mime || 'text/plain',
+              content: typeof f.content === 'string' ? f.content : '',
+            }));
+            if (docs.length > 0) {
+              await client.upsert({ projectId, docs, idempotencyKey: item.id });
+            }
+          } catch (_) {}
+        }, 0);
+      } catch (_) {}
+    }
+
+    return new Response(JSON.stringify({ id: item.id }), {
       status: 200,
-      headers: { 'content-type': 'application/json' }
+      headers: { 'content-type': 'application/json' },
     });
   } catch (e) {
     const msg = e?.message || 'UNKNOWN';
     const code = msg.startsWith('MISSING_') ? 400 : 500;
     return new Response(JSON.stringify({ error: msg }), {
       status: code,
-      headers: { 'content-type': 'application/json' }
+      headers: { 'content-type': 'application/json' },
     });
   }
 }
