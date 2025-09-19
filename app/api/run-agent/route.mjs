@@ -9,7 +9,7 @@ import { createRun, updateRun } from '../../../lib/ai/runs.mjs';
 async function jsonResp(data, opts = {}) {
   try {
     const mod = await import('next/server');
-    if (mod?.NextResponse?.json) return mod.jsonResp(data, opts);
+    if (mod?.NextResponse?.json) return mod.NextResponse.json(data, opts);
   } catch {}
   const status = opts?.status ?? 200;
   const headers = { 'content-type': 'application/json' };
@@ -195,14 +195,27 @@ export async function POST(req) {
   }
 
   // Enqueue executor
-  const execMod = testExecutor || await import('../../../lib/exec/executor.mjs');
-  const execute = execMod.execute || execMod.default || (() => ({ ok:true }));
-  execute({ plan: { kind:'autogen', testsWritten, patchesApplied }, ctx: { projectRoot } })
-    .then(() => appendLog({ type:'llm', id: runId }, { level:'info', message:'executor started' }))
-    .catch((e) => appendLog({ type:'llm', id: runId }, { level:'warn', message:'executor start error', meta:{ error:String(e) } }));
+const execMod = testExecutor || await import('../../../lib/exec/executor.mjs');
+const execute = execMod.execute || execMod.default || (async () => ({ ok:true }));
+// In tests, await the executor to avoid leaking async across test boundaries.
+if (testExecutor || process.env.NODE_ENV === 'test') {
+  try {
+    await execute({ plan: { kind:'autogen', testsWritten, patchesApplied }, ctx: { projectRoot } });
+    appendLog({ type:'llm', id: runId }, { level:'info', message:'executor completed (test)' });
+  } catch (e) {
+    appendLog({ type:'llm', id: runId }, { level:'error', message:'executor error (test)', meta:{ error:String(e) } });
+  }
+} else {
+  // Detach in production. Use an unref’d handle so the event loop is not kept alive.
+  const runDetached = () => {
+    Promise.resolve()
+      .then(() => execute({ plan: { kind:'autogen', testsWritten, patchesApplied }, ctx: { projectRoot } }))
+      .then(() => appendLog({ type:'llm', id: runId }, { level:'info', message:'executor started' }))
+      .catch((e) => appendLog({ type:'llm', id: runId }, { level:'error', message:'executor start error', meta:{ error:String(e) } }));
+  };
+  const h = (typeof setImmediate === 'function') ? setImmediate(runDetached) : setTimeout(runDetached, 0);
+  if (h && typeof h.unref === 'function') h.unref();
+}
 
-  const summary = Array.isArray(out?.transcript) ? (out.transcript.slice(-1)[0]?.content || '') : '';
-  updateRun(runId, { phase:'DONE', step:4, applied:{ patchesApplied, testsWritten }, summary });
-  appendLog({ type:'llm', id: runId }, { level:'info', message:'run-agent done', meta:{ runId } });
-  return jsonResp({ ok:true, runId, applied: { patches: patchesApplied, tests: testsWritten }, summary });
+return jsonResp({ ok:true, runId, applied: { patches: patchesApplied, tests: testsWritten }, summary });
 }
