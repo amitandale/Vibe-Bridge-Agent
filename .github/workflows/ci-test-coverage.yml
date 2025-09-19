@@ -35,18 +35,18 @@ jobs:
           node -v
           for d in lib scripts tests; do [ -d "$d" ] && find "$d" -type f \( -name '*.mjs' -o -name '*.js' \) -print0; done \
             | xargs -0 -I{} node --check "{}"
-- name: Test (node --test via c8)
-        run: npm run -s test
-      - name: Show coverage summary
-        run: npx c8 report --reporter=text
-      - name: Upload lcov
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-lcov
-          path: coverage/lcov.info
-          if-no-files-found: warn
-      - name: Cleanup DB
-        if: always()
-        run: |
-          set -euo pipefail
-          rm -f "${DATABASE_URL#sqlite:}"
+      - name: Test (node --test via c8)
+              run: npm run -s test
+            - name: Show coverage summary
+              run: npx c8 report --reporter=text
+            - name: Upload lcov
+              uses: actions/upload-artifact@v4
+              with:
+                name: coverage-lcov
+                path: coverage/lcov.info
+                if-no-files-found: warn
+            - name: Cleanup DB
+              if: always()
+              run: |
+                set -euo pipefail
+                rm -f "${DATABASE_URL#sqlite:}"
