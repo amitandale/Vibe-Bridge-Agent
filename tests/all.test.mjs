@@ -1,33 +1,30 @@
 // tests/all.test.mjs
-// Aggregator that makes each file a subtest to pinpoint syntax errors.
-import test from 'node:test';
-import fs from 'node:fs';
-import path from 'node:path';
-import url from 'node:url';
+// Aggregator that ensures all tests execute, with mocha-like globals shim.
+import "./_globals.mjs";
 
-const rootDir = path.resolve(process.cwd(), 'tests');
+import fs from "node:fs";
+import path from "node:path";
+import url from "node:url";
+
+const rootDir = path.resolve(process.cwd(), "tests");
 const re = /\.(test|spec)\.(mjs|js)$/;
 
-function* walk(dir) {
+const files = [];
+function walk(dir) {
   if (!fs.existsSync(dir)) return;
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) {
-      yield* walk(p);
-      continue;
-    }
+    if (ent.isDirectory()) { walk(p); continue; }
     const base = path.basename(p);
-    if (base.startsWith('_')) continue;
+    if (base.startsWith("_")) continue;
     if (!re.test(base)) continue;
-    yield p;
+    files.push(p);
   }
 }
-
-const selfPath = path.resolve(url.fileURLToPath(import.meta.url));
-const files = Array.from(walk(rootDir)).filter(f => path.resolve(f) !== selfPath).sort();
+walk(rootDir);
+files.sort((a,b) => a.localeCompare(b));
 
 for (const f of files) {
-  test('load ' + path.relative(rootDir, f), async () => {
-    await import(url.pathToFileURL(f).href);
-  });
+  if (path.resolve(f) === path.resolve(import.meta.filename)) continue;
+  await import(url.pathToFileURL(f).href);
 }

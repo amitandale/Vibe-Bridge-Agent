@@ -15,18 +15,7 @@ export async function POST(req) {
       acceptance: j?.acceptance,
       status: 'PLANNED',
     });
-                try {
-                  if ((process.env.LI_UPSERT_ON_PLAN || 'false').toString().toLowerCase() === 'true') {
-                    const changed = Array.isArray(j && j.changedFiles) ? j.changedFiles : [];
-                    if (changed.length > 0) {
-                      const mod = await import('../../../../lib/vendors/llamaindex.client.mjs');
-                      const client = mod.makeLlamaIndexClient();
-                      const docs = changed.map(x => (typeof x === 'string' ? { path: x, mime: 'text/plain', content: '' } : x));
-                      client.upsert({ projectId, docs, idempotencyKey: 'plan-' + String(item.id) }).catch(() => {});
-                    }
-                  }
-                } catch {}
-            return new Response(JSON.stringify({ id: item.id }), {
+    return new Response(JSON.stringify({ id: item.id }), {
       status: 200,
       headers: { 'content-type': 'application/json' }
     });
