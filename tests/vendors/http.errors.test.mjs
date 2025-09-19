@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeHttp } from '../../lib/vendors/http.mjs';
-import CodesMod from '../../lib/obs/errors.mjs';
+import * as CodesMod from '../../lib/obs/errors.mjs';
 
 // Try to read Codes from repo. If not available during isolated run, skip exact equality.
 const Codes = CodesMod?.Codes || CodesMod?.default?.Codes || CodesMod?.default || CodesMod;
