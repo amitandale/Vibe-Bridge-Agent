@@ -5,11 +5,12 @@ import { createHmac } from 'node:crypto';
 import autogen from '../lib/vendors/autogen.client.mjs';
 
 function hmacHex(key, bodyStr) {
-  return 'sha256=' + createHmac('sha256', Buffer.from(key, /^[0-9a-fA-F]{64}$/.test(key) ? 'hex' : 'utf8')).update(bodyStr, 'utf8').digest('hex');
+  const isHex = /^[0-9a-fA-F]{64}$/.test(key);
+  return 'sha256=' + createHmac('sha256', Buffer.from(key, isHex ? 'hex' : 'utf8')).update(bodyStr, 'utf8').digest('hex');
 }
 
 test('autogen client signs headers, retries 429, returns artifacts', async (t) => {
-process.env.AUTOGEN_URL = 'https://autogen.example';
+  process.env.AUTOGEN_URL = 'https://autogen.example';
   process.env.VENDOR_HMAC_PROJECT = 'proj_123';
   process.env.VENDOR_HMAC_KID = 'kid_1';
   process.env.VENDOR_HMAC_KEY = 'secretkey123';
@@ -27,40 +28,42 @@ process.env.AUTOGEN_URL = 'https://autogen.example';
 
   const prevFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
-    calls.push({ url, init 
-  globalThis.fetch = prevFetch;
-});
-if (attempt++ === 0) {
+    calls.push({ url, init });
+    if (attempt++ === 0) {
       return new Response('too many', { status: 429, headers: { 'content-type': 'text/plain' } });
     }
     return new Response(JSON.stringify(okPayload), { status: 200, headers: { 'content-type': 'application/json' } });
   };
 
-  const body = {
-    teamConfig: { team: 'pair' },
-    messages: [{ role: 'user', content: 'build' }],
-    contextRefs: [{ path: 'docs/a.md', span: { start: 0, end: 10 }, snippet: '...' }],
-    idempotencyKey: 'abc'
-  };
+  try {
+    const body = {
+      teamConfig: { team: 'pair' },
+      messages: [{ role: 'user', content: 'build' }],
+      contextRefs: [{ path: 'docs/a.md', span: { start: 0, end: 10 }, snippet: '...' }],
+      idempotencyKey: 'abc'
+    };
 
-  const res = await autogen.runAgents(body);
+    const res = await autogen.runAgents(body);
 
-  // Structure assertions
-  assert.deepEqual(res.transcript, ['ok']);
-  assert.equal(res.artifacts.patches.length, 1);
-  assert.equal(res.artifacts.tests.length, 1);
+    // Structure assertions
+    assert.deepEqual(res.transcript, ['ok']);
+    assert.equal(res.artifacts.patches.length, 1);
+    assert.equal(res.artifacts.tests.length, 1);
 
-  // Request assertions
-  assert.equal(calls.length, 2, 'should retry once after 429');
-  const last = calls.at(-1);
-  assert.equal(last.url, 'https://autogen.example/runAgents');
-  assert.equal(last.init.method, 'POST');
-  assert.equal(last.init.headers['content-type'], 'application/json');
-  assert.equal(last.init.headers.accept, 'application/json');
-  assert.equal(last.init.headers['x-vibe-project'], 'proj_123');
-  assert.equal(last.init.headers['x-vibe-kid'], 'kid_1');
-  const expectedSig = hmacHex(process.env.VENDOR_HMAC_KEY, JSON.stringify(body));
-  assert.equal(last.init.headers['x-signature'], expectedSig);
+    // Request assertions
+    assert.equal(calls.length, 2, 'should retry once after 429');
+    const last = calls.at(-1);
+    assert.equal(last.url, 'https://autogen.example/runAgents');
+    assert.equal(last.init.method, 'POST');
+    assert.equal(last.init.headers['content-type'], 'application/json');
+    assert.equal(last.init.headers.accept, 'application/json');
+    assert.equal(last.init.headers['x-vibe-project'], 'proj_123');
+    assert.equal(last.init.headers['x-vibe-kid'], 'kid_1');
+    const expectedSig = hmacHex(process.env.VENDOR_HMAC_KEY, JSON.stringify(body));
+    assert.equal(last.init.headers['x-signature'], expectedSig);
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
 });
 
 test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', async (t) => {
@@ -91,15 +94,6 @@ test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', as
     globalThis.fetch = prevFetch;
   }
 });
-let threw = false;
-  try {
-    await autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' });
-  } catch (e) {
-    threw = true;
-    assert.equal(e.code, 'UPSTREAM_UNAVAILABLE');
-  }
-  assert.equal(threw, true);
-});
 
 test('autogen client maps 400 to BAD_REQUEST', async (t) => {
   process.env.AUTOGEN_URL = 'https://autogen.example';
@@ -107,10 +101,15 @@ test('autogen client maps 400 to BAD_REQUEST', async (t) => {
   process.env.VENDOR_HMAC_KID = 'kid_1';
   process.env.VENDOR_HMAC_KEY = 'secretkey123';
 
+  const prevFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response('bad', { status: 400, headers: { 'content-type': 'text/plain' } });
 
-  await assert.rejects(
-    () => autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
-    (e) => e && e.code === 'BAD_REQUEST'
-  );
+  try {
+    await assert.rejects(
+      () => autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
+      (e) => e && e.code === 'BAD_REQUEST'
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
 });
