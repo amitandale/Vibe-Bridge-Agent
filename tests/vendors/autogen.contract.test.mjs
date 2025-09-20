@@ -1,44 +1,96 @@
+// tests/vendors/autogen.contract.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import makeAutoGenClient from '../../lib/vendors/autogen.client.mjs';
+import autogen from '../../lib/vendors/autogen.client.mjs';
 
-test('autogen client signs, retries, and returns artifacts', async () => {
-  const projectId = 'p1', kid = 'k1', key = 'sek';
-  let calls = 0, captured = null;
-  const fakeFetch = async (url, init) => {
-    captured = { url, init };
-    calls += 1;
-    if (calls === 1) {
-      return { ok:false, status:429, headers: new Map([['retry-after','0']]), text: async ()=>'rate' };
+function hmacHex(key, bodyStr) {
+  return 'sha256=' + createHmac('sha256', Buffer.from(key, /^[0-9a-fA-F]{64}$/.test(key) ? 'hex' : 'utf8')).update(bodyStr, 'utf8').digest('hex');
+}
+
+test('autogen client signs headers, retries 429, returns artifacts', async (t) => {
+  process.env.AUTOGEN_URL = 'https://autogen.example';
+  process.env.VENDOR_HMAC_PROJECT = 'proj_123';
+  process.env.VENDOR_HMAC_KID = 'kid_1';
+  process.env.VENDOR_HMAC_KEY = 'secretkey123';
+
+  const calls = [];
+  let attempt = 0;
+
+  const okPayload = {
+    transcript: ['ok'],
+    artifacts: {
+      patches: [{ path: 'README.md', diff: '--- a/README.md\n+++ b/README.md\n@@\n-Old\n+New\n' }],
+      tests: [{ path: 'tests/generated/sample.test.mjs', content: '/* ok */' }]
     }
-    return {
-      ok: true, status: 200,
-      json: async () => ({
-        transcript: [{ role:'system', content:'ok' }],
-        artifacts: {
-          patches: [{ path:'lib/a.mjs', diff:'--- a/lib/a.mjs\n+++ b/lib/a.mjs\n@@ -1,1 +1,1\n-old\n+new\n' }],
-          tests: [{ path:'tests/generated/x.test.mjs', content:"import test from 'node:test';\nimport assert from 'node:assert/strict';\ntest('x',()=>assert.ok(true));\n" }]
-        }
-      })
-    };
   };
 
-  const client = makeAutoGenClient({ baseUrl:'', projectId, kid, key, fetchImpl: fakeFetch });
-  const body = { teamConfig:{}, messages:[{ role:'user', content:'do X' }], contextRefs:[{ path:'a', snippet:'b' }], idempotencyKey:'idem-1' };
-  const out = await client.runAgents(body);
-  assert.equal(calls, 2);
-  assert.ok(Array.isArray(out?.artifacts?.patches));
-  assert.ok(Array.isArray(out?.artifacts?.tests));
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, init });
+    if (attempt++ === 0) {
+      return new Response('too many', { status: 429, headers: { 'content-type': 'text/plain' } });
+    }
+    return new Response(JSON.stringify(okPayload), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
 
-  // signed headers
-  const headers = captured.init.headers;
-  const get = (k) => headers.get ? headers.get(k) : headers[k.toLowerCase()] || headers[k];
-  assert.equal(get('x-vibe-project'), projectId);
-  assert.equal(get('x-vibe-kid'), kid);
-  const hex = createHmac('sha256', key).update(Buffer.from(captured.init.body)).digest('hex');
-  assert.equal(get('x-signature'), `sha256=${hex}`);
+  const body = {
+    teamConfig: { team: 'pair' },
+    messages: [{ role: 'user', content: 'build' }],
+    contextRefs: [{ path: 'docs/a.md', span: { start: 0, end: 10 }, snippet: '...' }],
+    idempotencyKey: 'abc'
+  };
 
-  // body schema includes idempotency key header, but http client sets header not in body
-  assert.equal(JSON.parse(captured.init.body).messages[0].role, 'user');
+  const res = await autogen.runAgents(body);
+
+  // Structure assertions
+  assert.deepEqual(res.transcript, ['ok']);
+  assert.equal(res.artifacts.patches.length, 1);
+  assert.equal(res.artifacts.tests.length, 1);
+
+  // Request assertions
+  assert.equal(calls.length, 2, 'should retry once after 429');
+  const last = calls.at(-1);
+  assert.equal(last.url, 'https://autogen.example/runAgents');
+  assert.equal(last.init.method, 'POST');
+  assert.equal(last.init.headers['content-type'], 'application/json');
+  assert.equal(last.init.headers.accept, 'application/json');
+  assert.equal(last.init.headers['x-vibe-project'], 'proj_123');
+  assert.equal(last.init.headers['x-vibe-kid'], 'kid_1');
+  const expectedSig = hmacHex(process.env.VENDOR_HMAC_KEY, JSON.stringify(body));
+  assert.equal(last.init.headers['x-signature'], expectedSig);
+});
+
+test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', async (t) => {
+  process.env.AUTOGEN_URL = 'https://autogen.example';
+  process.env.VENDOR_HMAC_PROJECT = 'proj_123';
+  process.env.VENDOR_HMAC_KID = 'kid_1';
+  process.env.VENDOR_HMAC_KEY = 'secretkey123';
+  process.env.AUTOGEN_TIMEOUT_MS = '50';
+  process.env.AUTOGEN_RETRIES = '0';
+
+  // fetch that never resolves to force our internal timeout path
+  globalThis.fetch = async () => new Promise(() => {});
+
+  let threw = false;
+  try {
+    await autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' });
+  } catch (e) {
+    threw = true;
+    assert.equal(e.code, 'UPSTREAM_UNAVAILABLE');
+  }
+  assert.equal(threw, true);
+});
+
+test('autogen client maps 400 to BAD_REQUEST', async (t) => {
+  process.env.AUTOGEN_URL = 'https://autogen.example';
+  process.env.VENDOR_HMAC_PROJECT = 'proj_123';
+  process.env.VENDOR_HMAC_KID = 'kid_1';
+  process.env.VENDOR_HMAC_KEY = 'secretkey123';
+
+  globalThis.fetch = async () => new Response('bad', { status: 400, headers: { 'content-type': 'text/plain' } });
+
+  await assert.rejects(
+    () => autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
+    (e) => e && e.code === 'BAD_REQUEST'
+  );
 });
