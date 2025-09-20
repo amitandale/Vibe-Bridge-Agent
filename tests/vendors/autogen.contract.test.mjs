@@ -2,14 +2,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import autogen from '../../lib/vendors/autogen.client.mjs';
+import autogen from '../lib/vendors/autogen.client.mjs';
 
 function hmacHex(key, bodyStr) {
   return 'sha256=' + createHmac('sha256', Buffer.from(key, /^[0-9a-fA-F]{64}$/.test(key) ? 'hex' : 'utf8')).update(bodyStr, 'utf8').digest('hex');
 }
 
 test('autogen client signs headers, retries 429, returns artifacts', async (t) => {
-  process.env.AUTOGEN_URL = 'https://autogen.example';
+process.env.AUTOGEN_URL = 'https://autogen.example';
   process.env.VENDOR_HMAC_PROJECT = 'proj_123';
   process.env.VENDOR_HMAC_KID = 'kid_1';
   process.env.VENDOR_HMAC_KEY = 'secretkey123';
@@ -25,9 +25,12 @@ test('autogen client signs headers, retries 429, returns artifacts', async (t) =
     }
   };
 
+  const prevFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
-    calls.push({ url, init });
-    if (attempt++ === 0) {
+    calls.push({ url, init 
+  globalThis.fetch = prevFetch;
+});
+if (attempt++ === 0) {
       return new Response('too many', { status: 429, headers: { 'content-type': 'text/plain' } });
     }
     return new Response(JSON.stringify(okPayload), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -68,10 +71,27 @@ test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', as
   process.env.AUTOGEN_TIMEOUT_MS = '50';
   process.env.AUTOGEN_RETRIES = '0';
 
-  // fetch that never resolves to force our internal timeout path
-  globalThis.fetch = async () => new Promise(() => {});
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (url, init = {}) => new Promise((resolve, reject) => {
+    const signal = init.signal;
+    if (signal) {
+      if (signal.aborted) return reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      const onAbort = () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+    // never resolve; only abort will reject
+  });
 
-  let threw = false;
+  try {
+    await assert.rejects(
+      () => autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
+      (e) => e && e.code === 'UPSTREAM_UNAVAILABLE'
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
+});
+let threw = false;
   try {
     await autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' });
   } catch (e) {
