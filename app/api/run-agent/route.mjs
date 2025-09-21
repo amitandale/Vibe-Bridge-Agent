@@ -75,7 +75,7 @@ if (!__runAgents) {
 
   let result;
   try {
-    result = await __runAgents({ teamConfig: body.teamConfig, messages: body.messages, contextRefs, idempotencyKey });
+    result = await __runAgents({ teamConfig: body.teamConfig, messages: body.messages, contextRefs, idempotencyKey }, { fetchImpl: globalThis.fetch, baseUrl: (process.env.AUTOGEN_URL || 'http://local') });
   } catch (e) {
     const code = e?.code || 'UPSTREAM_UNAVAILABLE';
     return new Response(JSON.stringify({ ok: false, code }), { status: 502, headers: { 'content-type': 'application/json' } });
