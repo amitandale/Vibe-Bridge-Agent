@@ -2,6 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+const execModUrl = new URL('../../lib/exec/executor.mjs', import.meta.url).href;
+
 test('executor picks remote path when EXEC_MODE=remote and normalizes output', async () => {
   process.env.EXEC_MODE = 'remote';
   let called = 0;
@@ -12,7 +14,7 @@ test('executor picks remote path when EXEC_MODE=remote and normalizes output', a
     }
   };
 
-  const mod = await import('../../lib/exec/executor.mjs');
+  const mod = await import(execModUrl);
   const res = await mod.pickExecute({ plan: { exec: { cwd:'/w', shell:'bash', commands:['echo ok'], env:{ CI:'true' }, timeoutMs: 1000 } } });
   assert.equal(res.ok, true);
   assert.equal(res.exitCode, 0);
@@ -26,8 +28,7 @@ test('executor picks remote path when EXEC_MODE=remote and normalizes output', a
 
 test('executor falls back to local when EXEC_MODE=local', async () => {
   process.env.EXEC_MODE = 'local';
-  const mod = await import('../../lib/exec/executor.mjs');
-  // We do not assume specific local behavior, just that it returns an object.
+  const mod = await import(execModUrl);
   const res = await mod.pickExecute({ plan: {} });
   assert.equal(typeof res, 'object');
   delete process.env.EXEC_MODE;
