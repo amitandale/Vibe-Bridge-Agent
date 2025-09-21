@@ -1,53 +1,39 @@
 # AutoGen Vendor Client
 
-Thin HTTP client used by Bridge-Agent to call an external AutoGen service.
+## Request
 
-## Endpoint
-`POST ${AUTOGEN_URL}/runAgents`
+POST `${AUTOGEN_URL}/run-agents`
 
-## Request body
+Headers:
+- `content-type: application/json`
+- `x-idempotency-key: <uuid>`
+- `x-vibe-project: ${VENDOR_HMAC_PROJECT}`
+- `x-vibe-kid: ${VENDOR_HMAC_KID}`
+- `x-signature: sha256=<hexdigest(body)>`
+
+Body:
 ```json
 {
   "teamConfig": { "...": "..." },
-  "messages": [ { "role": "user", "content": "..." } ],
-  "contextRefs": [ { "path": "docs/a.md", "span": {"start": 0, "end": 120}, "snippet": "..." } ],
-  "idempotencyKey": "session|plan|commit id"
+  "messages": [{ "role": "user", "content": "..." }],
+  "contextRefs": [{ "path": "file", "span": { "start": 0, "end": 10 }, "snippet": "..." }],
+  "idempotencyKey": "uuid"
 }
 ```
 
-## Required headers
-- `x-vibe-project`: project id
-- `x-vibe-kid`: key id
-- `x-signature`: `sha256=<hex>` HMAC over the raw JSON body using `VENDOR_HMAC_KEY`
+## Response
 
-Content type: `application/json`
-
-## Env
-- `AUTOGEN_URL` (required in dev/staging)
-- `VENDOR_HMAC_PROJECT`, `VENDOR_HMAC_KID`, `VENDOR_HMAC_KEY`
-- `AUTOGEN_TIMEOUT_MS` (default 10000)
-- `AUTOGEN_RETRIES` (default 2)
-
-## Retries and timeout
-- Retries on 429 and 5xx with exponential backoff
-- Total attempts: 1 + AUTOGEN_RETRIES
-- Per-attempt timeout: AUTOGEN_TIMEOUT_MS
-
-## Response body
 ```json
 {
-  "transcript": ["..."],
+  "transcript": [],
   "artifacts": {
-    "patches": [ { "path": "README.md", "diff": "unified diff" } ],
-    "tests":   [ { "path": "tests/generated/x.test.mjs", "content": "..." } ]
+    "patches": [{ "path": "a/b.js", "diff": "unified diff" }],
+    "tests": [{ "path": "tests/generated/x.test.mjs", "content": "..." }]
   }
 }
 ```
 
-## Error mapping
-- 429/5xx/timeout → `UPSTREAM_UNAVAILABLE`
-- 400 → `BAD_REQUEST`
-- 401 → `UNAUTHORIZED`
-- 403 → `FORBIDDEN`
-- 404 → `NOT_FOUND`
-- Others → `BAD_UPSTREAM`
+## Retries and timeout
+
+- 10s timeout.
+- 2 retries on 429 and 5xx with exponential backoff.
