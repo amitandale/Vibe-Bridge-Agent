@@ -2,18 +2,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import autogen from '../lib/vendors/autogen.client.mjs';
+import autogen from '../../lib/vendors/autogen.client.mjs';
 
-function hmacHex(key, bodyStr) {
-  const isHex = /^[0-9a-fA-F]{64}$/.test(key);
-  return 'sha256=' + createHmac('sha256', Buffer.from(key, isHex ? 'hex' : 'utf8')).update(bodyStr, 'utf8').digest('hex');
+function hmacHeaderUtf8(key, bodyObj) {
+  const bodyStr = JSON.stringify(bodyObj);
+  const hex = createHmac('sha256', Buffer.from(String(key ?? ''), 'utf8')).update(bodyStr, 'utf8').digest('hex');
+  return 'sha256=' + hex;
 }
 
-test('autogen client signs headers, retries 429, returns artifacts', async (t) => {
+test('autogen client signs headers, retries 429, returns artifacts', async () => {
   process.env.AUTOGEN_URL = 'https://autogen.example';
   process.env.VENDOR_HMAC_PROJECT = 'proj_123';
   process.env.VENDOR_HMAC_KID = 'kid_1';
   process.env.VENDOR_HMAC_KEY = 'secretkey123';
+  delete process.env.AUTOGEN_TIMEOUT_MS;
+  delete process.env.AUTOGEN_RETRIES;
 
   const calls = [];
   let attempt = 0;
@@ -27,7 +30,7 @@ test('autogen client signs headers, retries 429, returns artifacts', async (t) =
   };
 
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = async (url, init) => {
+  globalThis.fetch = async (url, init = {}) => {
     calls.push({ url, init });
     if (attempt++ === 0) {
       return new Response('too many', { status: 429, headers: { 'content-type': 'text/plain' } });
@@ -59,14 +62,14 @@ test('autogen client signs headers, retries 429, returns artifacts', async (t) =
     assert.equal(last.init.headers.accept, 'application/json');
     assert.equal(last.init.headers['x-vibe-project'], 'proj_123');
     assert.equal(last.init.headers['x-vibe-kid'], 'kid_1');
-    const expectedSig = hmacHex(process.env.VENDOR_HMAC_KEY, JSON.stringify(body));
+    const expectedSig = hmacHeaderUtf8(process.env.VENDOR_HMAC_KEY, body);
     assert.equal(last.init.headers['x-signature'], expectedSig);
   } finally {
     globalThis.fetch = prevFetch;
   }
 });
 
-test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', async (t) => {
+test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', async () => {
   process.env.AUTOGEN_URL = 'https://autogen.example';
   process.env.VENDOR_HMAC_PROJECT = 'proj_123';
   process.env.VENDOR_HMAC_KID = 'kid_1';
@@ -75,14 +78,14 @@ test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', as
   process.env.AUTOGEN_RETRIES = '0';
 
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (url, init = {}) => new Promise((resolve, reject) => {
-    const signal = init.signal;
+  globalThis.fetch = (url, init = {}) => new Promise((_, reject) => {
+    const signal = init && init.signal;
     if (signal) {
       if (signal.aborted) return reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
       const onAbort = () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
       signal.addEventListener('abort', onAbort, { once: true });
     }
-    // never resolve; only abort will reject
+    // never resolve; rely on abort
   });
 
   try {
@@ -95,11 +98,13 @@ test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', as
   }
 });
 
-test('autogen client maps 400 to BAD_REQUEST', async (t) => {
+test('autogen client maps 400 to BAD_REQUEST', async () => {
   process.env.AUTOGEN_URL = 'https://autogen.example';
   process.env.VENDOR_HMAC_PROJECT = 'proj_123';
   process.env.VENDOR_HMAC_KID = 'kid_1';
   process.env.VENDOR_HMAC_KEY = 'secretkey123';
+  delete process.env.AUTOGEN_TIMEOUT_MS;
+  delete process.env.AUTOGEN_RETRIES;
 
   const prevFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response('bad', { status: 400, headers: { 'content-type': 'text/plain' } });
