@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const execModUrl = new URL('../lib/exec/executor.mjs', import.meta.url).href;
+const execModUrl = new URL('../../lib/exec/executor.mjs', import.meta.url).href;
 
 test('executor picks remote path when EXEC_MODE=remote and normalizes output', async () => {
   process.env.EXEC_MODE = 'remote';
