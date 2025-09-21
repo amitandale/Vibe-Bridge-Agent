@@ -1,15 +1,24 @@
 import { requireBridgeGuards } from '../../../lib/security/guard.mjs';
 import autogen from '../../../lib/vendors/autogen.client.mjs';
-import { pack } from '../../../lib/context/pack.mjs';
 import { parseUnifiedDiff, applyHunksToContent } from '../../../lib/diff.mjs';
 import { promises as fs } from 'node:fs';
 import { join, dirname } from 'node:path';
 import crypto from 'node:crypto';
 
+async function getRetriever() {
+  if (globalThis.__selectRetriever) return globalThis.__selectRetriever;
+  try {
+    const mod = await import('../../../lib/context/retrievers/select.mjs');
+    // Prefer explicit selector, but accept legacy 'select'
+    return mod.selectRetriever || mod.select || (mod.default && (mod.default.selectRetriever || mod.default.select)) || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * POST /app/api/run-agent
  * Body: { teamConfig, messages, idempotencyKey?, projectRoot? }
- * Headers required for guards: x-signature, x-vibe-ticket (presence-only legacy)
  */
 export async function POST(req) {
   // Guards
@@ -22,26 +31,35 @@ export async function POST(req) {
 
   // Parse body
   let body = {};
-  try {
-    body = await req.json();
-  } catch {
-    body = {};
-  }
+  try { body = await req.json(); } catch {}
   const teamConfig = body?.teamConfig ?? {};
   const messages = Array.isArray(body?.messages) ? body.messages : [];
   const projectRoot = String(body?.projectRoot || process.cwd());
   const idempotencyKey = String(body?.idempotencyKey || req.headers.get('x-idempotency-key') || crypto.randomUUID());
 
-  // Build contextRefs via packer
+  // Build contextRefs via retriever, fallback safe
   const topK = Number(process.env.PLAN_PACK_TOP_K || '5') || 5;
   let contextRefs = [];
   try {
-    const res = await pack({ repoRoot: projectRoot, budget: { maxChars: 200_000, maxFiles: 50 } });
-    const arts = Array.isArray(res?.artifacts) ? res.artifacts : Array.isArray(res) ? res : [];
-    contextRefs = arts.slice(0, topK).map(a => {
-      const text = String(a?.content ?? a?.text ?? '');
+    const retriever = await getRetriever();
+    const query = { kind: 'run-agent', messages, teamConfig, topK };
+    const ctx = { projectRoot };
+    let nodes = [];
+    if (typeof retriever === 'function') {
+      nodes = await retriever(ctx, query);
+    } else if (retriever && typeof retriever === 'object') {
+      const fn = retriever.selectRetriever || retriever.select;
+      if (typeof fn === 'function') {
+        const r = await fn({ prefer: process.env.BA_RETRIEVER });
+        if (typeof r === 'function') nodes = await r(ctx, query);
+      }
+    }
+    const arr = Array.isArray(nodes) ? nodes : [];
+    contextRefs = arr.slice(0, topK).map(n => {
+      const p = String(n?.path || n?.id || '');
+      const text = String(n?.text ?? n?.content ?? '');
       const snippet = text.slice(0, Math.min(text.length, 400));
-      return { path: String(a?.path || ''), span: { start: 0, end: snippet.length }, snippet };
+      return { path: p, span: { start: 0, end: snippet.length }, snippet };
     });
   } catch {
     contextRefs = [];
@@ -52,7 +70,6 @@ export async function POST(req) {
   try {
     result = await autogen.runAgents({ teamConfig, messages, contextRefs, idempotencyKey });
   } catch (e) {
-    // Map upstream unavailability to 503
     return new Response(JSON.stringify({ ok: false, code: 'UPSTREAM_UNAVAILABLE', message: String(e?.message || e) }), {
       status: 503,
       headers: { 'content-type': 'application/json; charset=utf-8' }
@@ -66,7 +83,6 @@ export async function POST(req) {
     const patches = Array.isArray(result?.artifacts?.patches) ? result.artifacts.patches : [];
     for (const p of patches) {
       const diffText = String(p?.diff || '');
-      // Prefer unified diff path
       if (diffText.includes('diff --git')) {
         const files = parseUnifiedDiff(diffText);
         for (const f of files) {
@@ -81,7 +97,6 @@ export async function POST(req) {
           appliedPatches++;
         }
       } else {
-        // Fallback: treat as full-file content replacement when path is provided
         const rel = String(p?.path || '').trim();
         if (!rel) throw new Error('missing path for non-diff patch');
         const abs = join(projectRoot, rel);
@@ -113,7 +128,6 @@ export async function POST(req) {
     if (globalThis.__onExecutorEnqueued) {
       try { globalThis.__onExecutorEnqueued(payload); } catch {}
     }
-    // Fire-and-forget
     (async () => {
       try {
         const mod = await import('../../../lib/exec/executor.mjs');
