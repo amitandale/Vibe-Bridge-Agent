@@ -11,7 +11,7 @@ function pickIdempotencyKey(body) {
 }
 
 async function buildContextRefs(body) {
-  const mod = await maybeImport('../../lib/context/pack.mjs');
+  const mod = await maybeImport('../../../lib/context/pack.mjs');
   const K = Number(process.env.PLAN_PACK_TOP_K || 5);
   if (mod?.pack && typeof mod.pack === 'function') {
     try {
@@ -33,7 +33,7 @@ async function applyPatchEntry(patch) {
     return true;
   }
   // Try repo diff applier
-  const mod = await maybeImport('../../lib/diff.mjs');
+  const mod = await maybeImport('../../../lib/diff.mjs');
   if (mod?.applyUnifiedDiff) {
     await mkdir(path.dirname(filePath), { recursive: true });
     const ok = await mod.applyUnifiedDiff(filePath, diff);
@@ -60,21 +60,22 @@ async function applyArtifacts(artifacts) {
 }
 
 export async function POST(req) {
-  const guard = await maybeImport('../../lib/security/guard.mjs');
+  const guard = await maybeImport('../../../lib/security/guard.mjs');
   if (guard?.requireBridgeGuards) await guard.requireBridgeGuards(req);
 
   const body = await req.json();
   const idempotencyKey = pickIdempotencyKey(body);
   const contextRefs = await buildContextRefs(body);
 
-  const autogen = await maybeImport('../../lib/vendors/autogen.client.mjs');
-  if (!autogen?.runAgents) {
+  const autogen = await maybeImport('../../../lib/vendors/autogen.client.mjs');
+  const __runAgents = (autogen && typeof autogen.runAgents === 'function') ? autogen.runAgents : (autogen && autogen.default && autogen.default.runAgents);
+if (!__runAgents) {
     return new Response(JSON.stringify({ ok: false, code: 'UPSTREAM_UNAVAILABLE' }), { status: 503, headers: { 'content-type': 'application/json' } });
   }
 
   let result;
   try {
-    result = await autogen.runAgents({ teamConfig: body.teamConfig, messages: body.messages, contextRefs, idempotencyKey });
+    result = await __runAgents({ teamConfig: body.teamConfig, messages: body.messages, contextRefs, idempotencyKey });
   } catch (e) {
     const code = e?.code || 'UPSTREAM_UNAVAILABLE';
     return new Response(JSON.stringify({ ok: false, code }), { status: 502, headers: { 'content-type': 'application/json' } });
@@ -87,7 +88,7 @@ export async function POST(req) {
       try { globalThis.__onExecutorEnqueued(payload); } catch {}
     } else {
       // best-effort enqueue if executor exists
-      const ex = await maybeImport('../../lib/exec/executor.mjs');
+      const ex = await maybeImport('../../../lib/exec/executor.mjs');
       if (ex?.execute) { ex.execute(payload); }
     }
     const runId = randomUUID();
