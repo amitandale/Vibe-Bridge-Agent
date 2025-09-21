@@ -1,4 +1,5 @@
-import { test, strict as assert } from 'node:test';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import { POST } from '../../app/api/run-agent/route.mjs';
 
 function mkResponse(status, json) {
