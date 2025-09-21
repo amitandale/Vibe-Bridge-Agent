@@ -82,7 +82,8 @@ export async function POST(req) {
     );
   } catch (e) {
     const code = e?.code || 'UPSTREAM_UNAVAILABLE';
-    return new Response(JSON.stringify({ ok: false, code }), { status: 502, headers: { 'content-type': 'application/json' } });
+    const __status = (e && typeof e.status === 'number' && e.status >= 400 && e.status < 500) || code === 'BAD_REQUEST' ? 400 : 502;
+    return new Response(JSON.stringify({ ok: false, code }), { status: __status, headers: { 'content-type': 'application/json' } });
   }
 
   try {
