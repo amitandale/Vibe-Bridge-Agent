@@ -60,4 +60,12 @@ test('bad patch returns 400', async () => {
   assert.equal(res.status, 400);
   const body = await res.json();
   assert.equal(body.ok, false);
+    } finally {
+    globalThis.fetch = __origFetch;
+    globalThis.__onExecutorEnqueued = __origEnqueue;
+  }
+} finally {
+    globalThis.fetch = __origFetch;
+    globalThis.__onExecutorEnqueued = __origEnqueue;
+  }
 });
