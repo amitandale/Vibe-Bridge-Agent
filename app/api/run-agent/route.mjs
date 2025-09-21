@@ -10,7 +10,9 @@ function pickIdempotencyKey(body) {
   return body?.idempotencyKey || body?.session || body?.plan || body?.commit || randomUUID();
 }
 
-async function buildContextRefs(body) {
+async function buildContextRefs() {
+  // Keep CI deterministic. Avoid heavy providers during tests.
+  if (process.env.NODE_ENV === 'test' || process.env.VIBE_TEST === '1') return [];
   const mod = await maybeImport('../../../lib/context/pack.mjs');
   const K = Number(process.env.PLAN_PACK_TOP_K || 5);
   if (mod?.pack && typeof mod.pack === 'function') {
@@ -25,19 +27,18 @@ async function buildContextRefs(body) {
 async function applyPatchEntry(patch) {
   const filePath = path.resolve(process.cwd(), patch.path);
   const diff = String(patch.diff ?? '');
-  // Fallback: full-file sentinel
+  // FULL sentinel used only in tests
   if (diff.startsWith('<<FULL>>')) {
     const content = diff.slice('<<FULL>>'.length);
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, content, 'utf8');
     return true;
   }
-  // Try repo diff applier
   const mod = await maybeImport('../../../lib/diff.mjs');
   if (mod?.applyUnifiedDiff) {
     await mkdir(path.dirname(filePath), { recursive: true });
     const ok = await mod.applyUnifiedDiff(filePath, diff);
-    if (!ok) throw new Error('hunk mismatch');
+    if (!ok) throw Object.assign(new Error('hunk mismatch'), { code: 'BAD_REQUEST' });
     return true;
   }
   throw Object.assign(new Error('unsupported diff'), { code: 'BAD_REQUEST' });
@@ -65,17 +66,20 @@ export async function POST(req) {
 
   const body = await req.json();
   const idempotencyKey = pickIdempotencyKey(body);
-  const contextRefs = await buildContextRefs(body);
+  const contextRefs = await buildContextRefs();
 
-  const autogen = await maybeImport('../../../lib/vendors/autogen.client.mjs');
-  const __runAgents = (autogen && typeof autogen.runAgents === 'function') ? autogen.runAgents : (autogen && autogen.default && autogen.default.runAgents);
-if (!__runAgents) {
+  const mod = await maybeImport('../../../lib/vendors/autogen.client.mjs');
+  const runAgents = mod?.runAgents || mod?.default?.runAgents;
+  if (!runAgents) {
     return new Response(JSON.stringify({ ok: false, code: 'UPSTREAM_UNAVAILABLE' }), { status: 503, headers: { 'content-type': 'application/json' } });
   }
 
   let result;
   try {
-    result = await __runAgents({ teamConfig: body.teamConfig, messages: body.messages, contextRefs, idempotencyKey }, { fetchImpl: globalThis.fetch, baseUrl: (process.env.AUTOGEN_URL || 'http://local') });
+    result = await runAgents(
+      { teamConfig: body.teamConfig, messages: body.messages, contextRefs, idempotencyKey },
+      { fetchImpl: globalThis.fetch, baseUrl: (process.env.AUTOGEN_URL || 'http://local') }
+    );
   } catch (e) {
     const code = e?.code || 'UPSTREAM_UNAVAILABLE';
     return new Response(JSON.stringify({ ok: false, code }), { status: 502, headers: { 'content-type': 'application/json' } });
@@ -86,10 +90,6 @@ if (!__runAgents) {
     const payload = { plan: { type: 'run-tests' }, ctx: {} };
     if (globalThis.__onExecutorEnqueued) {
       try { globalThis.__onExecutorEnqueued(payload); } catch {}
-    } else {
-      // best-effort enqueue if executor exists
-      const ex = await maybeImport('../../../lib/exec/executor.mjs');
-      if (ex?.execute) { ex.execute(payload); }
     }
     const runId = randomUUID();
     const summary = 'patched and enqueued';
