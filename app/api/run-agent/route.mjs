@@ -3,12 +3,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-// Optional guards; fail closed only if module exists and rejects
+// Guard loader declared. Actual import happens inside POST to avoid module-load side effects.
 let requireBridgeGuards = async (_req) => {};
-try {
-  const g = await import('../../../lib/security/guard.mjs');
-  requireBridgeGuards = g.requireBridgeGuards || g.default || requireBridgeGuards;
-} catch {}
 
 function jsonResponse(status, body) {
   return new Response(JSON.stringify(body), {
@@ -118,6 +114,12 @@ async function buildContextRefs(messages, K = 5) {
 }
 
 export async function POST(req) {
+  // Lazy-load guards to avoid side effects at module import time
+  try {
+    const g = await import('../../../lib/security/guard.mjs');
+    requireBridgeGuards = g.requireBridgeGuards || g.default || requireBridgeGuards;
+  } catch {}
+
   // Guards
   try {
     await requireBridgeGuards(req);
