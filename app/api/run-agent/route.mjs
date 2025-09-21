@@ -181,8 +181,8 @@ export async function POST(req) {
     const ex = await import('../../../lib/exec/executor.mjs').then(m => m.execute || m.default || null);
     if (typeof ex === 'function') {
       // run asynchronously
-      setTimeout(() => { try { ex(payload); } catch {} }, 0);
-    }
+      queueMicrotask(() => { try { ex && ex(payload); } catch {} });
+}
   } catch {}
   if (globalThis.__onExecutorEnqueued && typeof globalThis.__onExecutorEnqueued === 'function') {
     try { globalThis.__onExecutorEnqueued(payload); } catch {}
