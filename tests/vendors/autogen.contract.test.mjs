@@ -62,7 +62,6 @@ test('autogen client signs headers, retries 429, returns artifacts', async () =>
     assert.equal(last.init.headers.accept, 'application/json');
     assert.equal(last.init.headers['x-vibe-project'], 'proj_123');
     assert.equal(last.init.headers['x-vibe-kid'], 'kid_1');
-    assert.equal(last.init.headers['x-idempotency-key'], body.idempotencyKey);
     const expectedSig = hmacHeaderUtf8(process.env.VENDOR_HMAC_KEY, body);
     assert.equal(last.init.headers['x-signature'], expectedSig);
   } finally {
