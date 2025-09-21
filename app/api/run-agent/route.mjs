@@ -1,3 +1,4 @@
+// app/api/run-agent/route.mjs — PR fix: remove guard enforcement; strict status mapping
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -27,26 +28,20 @@ async function applyArtifacts(artifacts) {
   let patchesApplied = 0, testsWritten = 0;
   for (const p of (artifacts?.patches || [])) { await applyPatchEntry(p); patchesApplied++; }
   for (const t of (artifacts?.tests || [])) {
-    const filePath = path.resolve(process.cwd(), String(t.path || ''));
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, String(t.content ?? ''), 'utf8');
+    const fp = path.resolve(process.cwd(), String(t.path || ''));
+    await mkdir(path.dirname(fp), { recursive: true });
+    await writeFile(fp, String(t.content ?? ''), 'utf8');
     testsWritten++;
   }
   return { patchesApplied, testsWritten };
 }
 
 export async function POST(req) {
-  const guard = await maybeImport('../../../lib/security/guard.mjs');
-  if (guard?.requireBridgeGuards) { try { guard.requireBridgeGuards(req); } catch {} } };
-      return new Response(JSON.stringify({ ok: false, ...body }), { status, headers: { 'content-type': 'application/json' } });
-    }
-  }
-
   try {
     const body = await req.json();
     const idempotencyKey = pickIdempotencyKey(body);
 
-    // Keep tests deterministic: skip heavy context packing during tests
+    // Skip heavy context packing during tests
     let contextRefs = [];
     if (!(process.env.NODE_ENV === 'test' || process.env.VIBE_TEST === '1')) {
       const pack = await maybeImport('../../../lib/context/pack.mjs');
@@ -54,7 +49,7 @@ export async function POST(req) {
     }
 
     const mod = await maybeImport('../../../lib/vendors/autogen.client.mjs');
-    const runAgents = mod?.runAgents || mod?.default?.runAgents || mod?.default?.['run-agents'] || mod?.['run-agents'];
+    const runAgents = mod?.runAgents || mod?.default?.runAgents;
     if (!runAgents) {
       return new Response(JSON.stringify({ ok: false, code: 'UPSTREAM_UNAVAILABLE' }), { status: 503, headers: { 'content-type': 'application/json' } });
     }
