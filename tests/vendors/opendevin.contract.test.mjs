@@ -2,7 +2,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// Helper fake fetch that we can script via a queue of responses.
 function queueFetch(responses){
   let i = 0;
   return async (url, init) => {
@@ -45,23 +44,15 @@ test('signs requests, honors idempotency, parses outputs', async () => {
 });
 
 test('retries on 429 then succeeds; honors Retry-After', async () => {
-  let waited = 0;
-  const sleep = ms => new Promise(r => setTimeout(()=>{ waited += ms; r(); }, 0)); // do not actually delay
-  // Patch global setTimeout within this test to accumulate waited time
-  const origSetTimeout = setTimeout;
-  globalThis.setTimeout = (fn, ms, ...args) => origSetTimeout(fn, 0, ...args);
-
+  // No global timer patching. Use Retry-After: 0 to avoid long waits.
   const fetch = queueFetch([
-    new Response('', { status: 429, headers: { 'retry-after': '1' } }),
+    new Response('', { status: 429, headers: { 'retry-after': '0' } }),
     jsonResponse({ stdout:'ok', stderr:'', exitCode:0, durationMs:5 })
   ]);
   const mod = await import('../../lib/vendors/opendevin.client.mjs');
   const run = await mod.exec({ cwd:'/w', shell:'bash', commands:['echo ok'], env:{}, timeoutMs: 5000 }, { fetchImpl: fetch });
   assert.equal(run.exitCode, 0);
   assert.equal(run.stdout, 'ok');
-
-  // Restore
-  globalThis.setTimeout = origSetTimeout;
 });
 
 test('maps errors to taxonomy-like codes', async () => {
