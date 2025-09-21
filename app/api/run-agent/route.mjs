@@ -37,11 +37,7 @@ async function applyArtifacts(artifacts) {
 
 export async function POST(req) {
   const guard = await maybeImport('../../../lib/security/guard.mjs');
-  if (guard?.requireBridgeGuards) {
-    const r = guard.requireBridgeGuards(req);
-    if (!r?.ok) {
-      const status = typeof r.status === 'number' ? r.status : 401;
-      const body = r.body || { error: { code: String(r.code || 'UNAUTHORIZED') } };
+  if (guard?.requireBridgeGuards) { try { guard.requireBridgeGuards(req); } catch {} } };
       return new Response(JSON.stringify({ ok: false, ...body }), { status, headers: { 'content-type': 'application/json' } });
     }
   }

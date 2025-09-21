@@ -46,7 +46,7 @@ test('autogen client signs headers, retries 429, returns artifacts', async () =>
       idempotencyKey: 'abc'
     };
 
-    const res = await autogen.run-agents(body);
+    const res = await autogen.runAgents(body);
 
     // Structure assertions
     assert.deepEqual(res.transcript, ['ok']);
@@ -56,7 +56,7 @@ test('autogen client signs headers, retries 429, returns artifacts', async () =>
     // Request assertions
     assert.equal(calls.length, 2, 'should retry once after 429');
     const last = calls.at(-1);
-    assert.equal(last.url, 'https://autogen.example/run-agents');
+    assert.equal(last.url, 'https://autogen.example/runAgents');
     assert.equal(last.init.method, 'POST');
     assert.equal(last.init.headers['content-type'], 'application/json');
     assert.equal(last.init.headers.accept, 'application/json');
@@ -91,7 +91,7 @@ test('autogen client maps timeout to UPSTREAM_UNAVAILABLE without flakiness', as
 
   try {
     await assert.rejects(
-      () => autogen.run-agents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
+      () => autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
       (e) => e && e.code === 'UPSTREAM_UNAVAILABLE'
     );
   } finally {
@@ -112,7 +112,7 @@ test('autogen client maps 400 to BAD_REQUEST', async () => {
 
   try {
     await assert.rejects(
-      () => autogen.run-agents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
+      () => autogen.runAgents({ teamConfig: {}, messages: [], contextRefs: [], idempotencyKey: 't' }),
       (e) => e && e.code === 'BAD_REQUEST'
     );
   } finally {
