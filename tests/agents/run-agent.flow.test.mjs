@@ -1,13 +1,10 @@
-import { unlink, rm, access } from 'node:fs/promises';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { POST } from '../../app/api/run-agent/route.mjs';
+import { unlink, rm } from 'node:fs/promises';
 
 function mkResponse(status, json) {
-  return {
-    status,
-    async json() { return json; },
-  };
+  return { status, async json() { return json; } };
 }
 
 test('route integrates client and applies artifacts then enqueues executor', async () => {
@@ -15,16 +12,16 @@ test('route integrates client and applies artifacts then enqueues executor', asy
   const origEnqueue = globalThis.__onExecutorEnqueued;
   try {
     let calls = 0;
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = async (_url, _init) => {
       calls++;
-      const vendorJson = {
+      return mkResponse(200, {
         transcript: [],
         artifacts: {
           patches: [{ path: 'tmp.generated.txt', diff: '<<FULL>>hello' }],
+          // Important: do not create a *.test.mjs to avoid discovery
           tests: [{ path: 'tests/generated/sample.mjs', content: 'export const ok = true;' }],
-        }
-      };
-      return mkResponse(200, vendorJson);
+        },
+      });
     };
 
     let enqueued = null;
@@ -45,10 +42,11 @@ test('route integrates client and applies artifacts then enqueues executor', asy
     assert.equal(body.applied.tests, 1);
     assert.equal(calls, 1);
     assert.ok(enqueued);
-  } \1    try { await unlink('tmp.generated.txt'); } catch {}
-    try { await unlink('tests/generated/sample.mjs'); } catch {}
+  } finally {
+    // Cleanup artifacts and restore globals
+    try { await unlink('tmp.generated.txt'); } catch {}
     try { await rm('tests/generated', { recursive: true, force: true }); } catch {}
-globalThis.fetch = origFetch;
+    globalThis.fetch = origFetch;
     globalThis.__onExecutorEnqueued = origEnqueue;
   }
 });
@@ -59,7 +57,7 @@ test('bad patch returns 400', async () => {
   try {
     globalThis.__onExecutorEnqueued = () => {};
 
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = async (_url, _init) => {
       return mkResponse(200, {
         transcript: [],
         artifacts: { patches: [{ path: 'tmp.bad.txt', diff: '<<BAD>>' }], tests: [] },
@@ -76,10 +74,9 @@ test('bad patch returns 400', async () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.equal(body.ok, false);
-  } \1    try { await unlink('tmp.generated.txt'); } catch {}
-    try { await unlink('tests/generated/sample.mjs'); } catch {}
-    try { await rm('tests/generated', { recursive: true, force: true }); } catch {}
-globalThis.fetch = origFetch;
+  } finally {
+    try { await unlink('tmp.bad.txt'); } catch {}
+    globalThis.fetch = origFetch;
     globalThis.__onExecutorEnqueued = origEnqueue;
   }
 });
