@@ -6,6 +6,8 @@
     "test": "node --test tests/all.test.mjs",
     "test:ci": "c8 -r text -r lcov node --test tests/all.test.mjs",
     "coverage": "c8 report --reporter=text",
-    "capacity:dry-run": "node scripts/workspace/dry-run.ci.mjs"
+    "capacity:dry-run": "node scripts/workspace/dry-run.ci.mjs",
+    "check": "bash -lc \"find . -type f \\( -name '*.mjs' -o -name '*.js' \\) -print0 | xargs -0 -r node --check\"",
+    "pretest": "npm run check"
   }
 }
