@@ -38,19 +38,7 @@ jobs:
             if [ $code -ne 0 ]; then
               echo "API error, retrying..."; sleep 5; continue
             fi
-            node - <<'NODE' || status=$?
-            const fs=require('fs');
-            const o=JSON.parse(fs.readFileSync(0,'utf8'));
-            const sha=process.env.GITHUB_SHA;
-            const name=process.env.CI_NAME;
-            const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);
-            if(!runs.length){ process.exit(2); }
-            const r=runs[0];
-            if(r.status!=='completed'){ process.exit(2); }
-            if(r.conclusion==='success'){ process.exit(0); }
-            if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion)){ process.exit(1); }
-            process.exit(2);
-            NODE
+            echo "$json" | node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const name=process.env.CI_NAME;const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);if(!runs.length)process.exit(2);const r=runs[0];if(r.status!=='completed')process.exit(2);if(r.conclusion==='success')process.exit(0);if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion))process.exit(1);process.exit(2);" || status=$?
             status=${status:-0}
             if [ "${status}" = "0" ]; then
               echo "CI succeeded"; break
