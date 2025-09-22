@@ -1,19 +1,18 @@
 name: Deploy Orchestrator
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
+    branches: [work, main]
 
 concurrency:
-  group: orchestrator-${{ github.event.workflow_run.head_branch }}
+  group: orchestrator-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'work' || github.event.workflow_run.head_branch == 'main') }}
     runs-on: [self-hosted, linux, x64]
-    environment: ${{ github.event.workflow_run.head_branch == 'work' && 'dev' || 'prod' }}
+    environment:
+      name: ${{ github.ref_name == 'work' and 'dev' or 'prod' }}
 
     env:
       SRV_DIR: /srv/vibe/bridge-agent
@@ -22,10 +21,46 @@ jobs:
       SERVICE: vibe-orchestrator
 
     steps:
-      - name: Checkout tested commit
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Wait for CI workflow success
+        if: ${{ github.ref_name == 'work' || github.ref_name == 'main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_NAME: ${{ vars.CI_WORKFLOW_NAME || 'CI' }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for CI '$CI_NAME' on $GITHUB_REF_NAME sha=$GITHUB_SHA"
+          for i in $(seq 1 90); do
+            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?event=push&branch=${GITHUB_REF_NAME}&per_page=100")"
+            code=$?
+            if [ $code -ne 0 ]; then
+              echo "API error, retrying..."; sleep 5; continue
+            fi
+            node - <<'NODE' || status=$?
+            const fs=require('fs');
+            const o=JSON.parse(fs.readFileSync(0,'utf8'));
+            const sha=process.env.GITHUB_SHA;
+            const name=process.env.CI_NAME;
+            const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);
+            if(!runs.length){ process.exit(2); }
+            const r=runs[0];
+            if(r.status!=='completed'){ process.exit(2); }
+            if(r.conclusion==='success'){ process.exit(0); }
+            if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion)){ process.exit(1); }
+            process.exit(2);
+NODE
+            status=${status:-0}
+            if [ "${status}" = "0" ]; then
+              echo "CI succeeded"; break
+            elif [ "${status}" = "1" ]; then
+              echo "CI failed"; exit 1
+            else
+              sleep 10
+            fi
+            unset status
+          done
 
       - name: Bootstrap system user, dirs, and unit
         run: |
