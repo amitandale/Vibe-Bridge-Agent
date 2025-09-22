@@ -16,21 +16,18 @@ jobs:
       contents: read
       statuses: read
     env:
-      CI_WORKFLOW_FILE: ci-test-coverage.yml
       CI_NAME: CI
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Wait for CI success
         run: |
           set -euo pipefail
-          : "${CI_WORKFLOW_FILE:=ci-test-coverage.yml}"
-          : "${CI_NAME:=ci-test-coverage}"
-          echo "Waiting for CI '$CI_NAME' (file=$CI_WORKFLOW_FILE) on $GITHUB_REF_NAME sha=$GITHUB_SHA"
+          echo "Waiting for CI '$CI_NAME' on $GITHUB_REF_NAME sha=$GITHUB_SHA"
           for i in $(seq 1 120); do
             json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${CI_WORKFLOW_FILE}/runs?branch=${GITHUB_REF_NAME}&per_page=50")" || true
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&per_page=100")" || true
             status=2
-            echo "$json" | node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const runs=o.workflow_runs.filter(w=>w.head_sha===sha);if(!runs.length)process.exit(2);runs.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));const r=runs[0];if(r.status!=='completed')process.exit(2);if(r.conclusion==='success')process.exit(0);if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion))process.exit(1);process.exit(2);" || status=$?
+            echo "$json" | node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const name=process.env.CI_NAME||'CI';const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);if(!runs.length)process.exit(2);const r=runs[0];if(r.status!=='completed')process.exit(2);if(r.conclusion==='success')process.exit(0);if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion))process.exit(1);process.exit(2);" || status=$?
             if [ "${status}" = "0" ]; then
               echo "CI succeeded"; exit 0
             elif [ "${status}" = "1" ]; then
