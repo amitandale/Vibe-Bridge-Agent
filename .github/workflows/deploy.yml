@@ -1,0 +1,82 @@
+name: Deploy Orchestrator
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+concurrency:
+  group: orchestrator-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'work' || github.event.workflow_run.head_branch == 'main') }}
+    runs-on: [self-hosted, linux, x64]
+    environment:
+      name: ${{ github.event.workflow_run.head_branch == 'work' && 'dev' || 'prod' }}
+
+    env:
+      SRV_DIR: /srv/vibe/bridge-agent
+      ENV_DIR: /etc/vibe
+      ENV_FILE: /etc/vibe/orchestrator.env
+      SERVICE: vibe-orchestrator
+
+    steps:
+      - name: Checkout target SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Bootstrap system user, dirs, and unit
+        run: |
+          set -euxo pipefail
+          sudo id -u vibe >/dev/null 2>&1 || sudo useradd -r -s /usr/sbin/nologin vibe
+          sudo install -d -m 755 /srv/vibe
+          sudo install -d -m 755 "$SRV_DIR"
+          sudo install -d -m 755 "$ENV_DIR"
+          sudo install -m 644 ./.deploy/systemd/vibe-orchestrator.service /etc/systemd/system/vibe-orchestrator.service
+
+      - name: Write runtime env (from environment secrets/vars)
+        run: |
+          set -euxo pipefail
+          sudo install -m 600 /dev/stdin "$ENV_FILE" <<'EOF'
+          NODE_ENV=production
+          PORT=${{ vars.ORCH_PORT || 3002 }}
+          VIBE_HMAC_SECRET=${{ secrets.VIBE_HMAC_SECRET }}
+          LLM_PROVIDER=${{ vars.LLM_PROVIDER || 'mock' }}
+          LLM_MODEL=${{ vars.LLM_MODEL || 'pplx-quickstart' }}
+          LLM_TIMEOUT_MS=${{ vars.LLM_TIMEOUT_MS || 10000 }}
+          BILLING_ENFORCE=1
+          LLM_API_EXPOSE=
+          ORCH_BIND=127.0.0.1
+          EOF
+
+      - name: Stop service before deploy
+        run: |
+          sudo systemctl stop $SERVICE || true
+
+      - name: Sync code to /srv
+        run: |
+          set -euxo pipefail
+          sudo rsync -a --delete --exclude '.git' --exclude 'node_modules' ./ "$SRV_DIR/"
+          sudo chown -R vibe:vibe "$SRV_DIR"
+
+      - name: Install production deps
+        working-directory: ${{ env.SRV_DIR }}
+        run: |
+          sudo -u vibe npm ci --omit=dev || npm ci --omit=dev
+
+      - name: Start and enable service
+        run: |
+          set -euxo pipefail
+          sudo systemctl daemon-reload
+          sudo systemctl enable $SERVICE
+          sudo systemctl start $SERVICE
+          sleep 2
+          sudo systemctl --no-pager --full status $SERVICE || true
+
+      - name: Health check
+        run: |
+          set -euxo pipefail
+          curl -sSf "http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/app/api/billing/prices" >/dev/null

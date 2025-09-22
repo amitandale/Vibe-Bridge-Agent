@@ -1,0 +1,16 @@
+[Unit]
+Description=Vibe Orchestrator (Bridge-Agent)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/vibe/orchestrator.env
+WorkingDirectory=/srv/vibe/bridge-agent
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=2
+User=vibe
+Group=vibe
+
+[Install]
+WantedBy=multi-user.target
