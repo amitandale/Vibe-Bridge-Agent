@@ -12,7 +12,7 @@ jobs:
   deploy:
     runs-on: [self-hosted, linux, x64]
     environment:
-      name: ${{ github.ref_name == 'work' and 'dev' or 'prod' }}
+      name: ${{ github.ref_name == 'work' && 'dev' || 'prod' }}
 
     env:
       SRV_DIR: /srv/vibe/bridge-agent
@@ -32,18 +32,13 @@ jobs:
           set -euo pipefail
           echo "Waiting for CI '$CI_NAME' on $GITHUB_REF_NAME sha=$GITHUB_SHA"
           for i in $(seq 1 90); do
-            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?event=push&branch=${GITHUB_REF_NAME}&per_page=100")"
-            code=$?
-            if [ $code -ne 0 ]; then
-              echo "API error, retrying..."; sleep 5; continue
-            fi
+            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?event=push&branch=${GITHUB_REF_NAME}&per_page=100")" || true
             node - <<'NODE' || status=$?
             const fs=require('fs');
-            const o=JSON.parse(fs.readFileSync(0,'utf8'));
+            const o=JSON.parse(fs.readFileSync(0,'utf8')||'{}');
             const sha=process.env.GITHUB_SHA;
             const name=process.env.CI_NAME;
-            const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);
+            const runs=(o.workflow_runs||[]).filter(w=>w.head_sha===sha && w.name===name);
             if(!runs.length){ process.exit(2); }
             const r=runs[0];
             if(r.status!=='completed'){ process.exit(2); }
