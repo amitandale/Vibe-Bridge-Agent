@@ -50,7 +50,7 @@ jobs:
             if(r.conclusion==='success'){ process.exit(0); }
             if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion)){ process.exit(1); }
             process.exit(2);
-NODE
+            NODE
             status=${status:-0}
             if [ "${status}" = "0" ]; then
               echo "CI succeeded"; break
