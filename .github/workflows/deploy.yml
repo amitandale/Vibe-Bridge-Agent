@@ -12,7 +12,7 @@ jobs:
   deploy:
     runs-on: [self-hosted, linux, x64]
     environment:
-      name: ${{ github.ref_name == 'work' and 'dev' or 'prod' }}
+      name: ${{ github.ref_name == 'work' && 'dev' || 'prod' }}
 
     env:
       SRV_DIR: /srv/vibe/bridge-agent
