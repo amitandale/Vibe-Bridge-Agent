@@ -9,8 +9,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for CI success
+        run: |
+          set -euo pipefail
+          echo "Waiting for checks on $GITHUB_REF_NAME sha=$GITHUB_SHA"
+          for i in $(seq 1 90); do
+            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")" || true
+            status=2
+            echo "$json" | node -e "const o=JSON.parse(require('fs').readFileSync(0,'utf8'));if(o.state==='success')process.exit(0);if(o.state==='failure'||o.state==='error')process.exit(1);process.exit(2);" || status=$?
+            if [ "${status}" = "0" ]; then
+              echo "Checks succeeded"; exit 0
+            elif [ "${status}" = "1" ]; then
+              echo "Checks failed"; exit 1
+            else
+              sleep 10
+            fi
+          done
+          echo "Timeout waiting for checks"; exit 2
+
   deploy:
     runs-on: [self-hosted, linux, x64]
+    needs: gate
     environment:
       name: ${{ github.ref_name == 'work' && 'dev' || 'prod' }}
 
