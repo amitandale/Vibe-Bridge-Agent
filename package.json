@@ -10,7 +10,9 @@
     "check": "bash -lc \"find . -type f \\( -name '*.mjs' -o -name '*.js' \\) -print0 | xargs -0 -r node --check\"",
     "pretest": "npm run check",
     "start": "next start -p ${PORT:-3002} -H ${ORCH_BIND:-127.0.0.1}",
-    "build": "next build"
+    "build": "next build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
     "next": "14.2.6",
