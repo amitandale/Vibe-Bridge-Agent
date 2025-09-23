@@ -8,6 +8,13 @@
     "coverage": "c8 report --reporter=text",
     "capacity:dry-run": "node scripts/workspace/dry-run.ci.mjs",
     "check": "bash -lc \"find . -type f \\( -name '*.mjs' -o -name '*.js' \\) -print0 | xargs -0 -r node --check\"",
-    "pretest": "npm run check"
+    "pretest": "npm run check",
+    "start": "next start -p ${PORT:-3002} -H ${ORCH_BIND:-127.0.0.1}",
+    "build": "next build"
+  },
+  "dependencies": {
+    "next": "14.2.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }
