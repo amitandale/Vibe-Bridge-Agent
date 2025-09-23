@@ -17,7 +17,7 @@ jobs:
       statuses: read
     env:
       CI_WORKFLOW_FILE: ci-test-coverage.yml
-      CI_NAME: CI
+      CI_NAME: ci-test-coverage
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Wait for CI success
