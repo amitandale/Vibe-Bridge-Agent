@@ -63,6 +63,10 @@ jobs:
         run: |
           sudo -u vibe npm ci --omit=dev || npm ci --omit=dev
 
+      - name: Install deps and build
+        run: |
+          set -euxo pipefail
+          sudo -u vibe bash -lc 'cd "$SRV_DIR" && npm ci --omit=dev && npm run build'
       - name: Start and enable service
         run: |
           set -euxo pipefail
@@ -75,4 +79,4 @@ jobs:
       - name: Health check
         run: |
           set -euxo pipefail
-          curl -sSf "http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/app/api/billing/prices" >/dev/null
+          curl -sSf "http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/api/billing/prices" >/dev/null
