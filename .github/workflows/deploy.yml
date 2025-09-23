@@ -67,6 +67,14 @@ jobs:
         run: |
           set -euxo pipefail
           sudo -u vibe bash -lc 'cd /srv/vibe/bridge-agent && npm ci --omit=dev'
+      - name: Ensure vibe HOME
+        run: |
+          set -euxo pipefail
+          sudo install -d -m 755 -o vibe -g vibe /home/vibe
+      - name: Install deps and build
+        run: |
+          set -euxo pipefail
+          sudo -u vibe env HOME=/home/vibe bash -lc 'cd /srv/vibe/bridge-agent && npm ci --omit=dev && npx next build'
       - name: Start and enable service
         run: |
           set -euxo pipefail
