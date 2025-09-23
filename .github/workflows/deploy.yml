@@ -22,6 +22,16 @@ jobs:
       SERVICE: vibe-orchestrator
 
     steps:
+      - name: "Guard: require CI green for this SHA"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_WORKFLOW_FILE: ci-test-coverage.yml
+        run: |
+          set -euo pipefail
+          json=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${CI_WORKFLOW_FILE}/runs?per_page=50")
+          node -e "const o=JSON.parse(require('fs').readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const ok=(o.workflow_runs||[]).some(w=>w.head_sha===sha && w.status==='completed' && w.conclusion==='success');if(!ok){console.error('CI not green for this SHA');process.exit(1)}"
+
       - name: Checkout
         uses: actions/checkout@v4
       - name: Bootstrap system user, dirs, and unit
