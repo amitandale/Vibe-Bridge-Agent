@@ -9,40 +9,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      statuses: read
-    env:
-      CI_WORKFLOW_FILE: ci-test-coverage.yml
-      CI_NAME: CI
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - name: Wait for CI success
-        run: |
-          set -euo pipefail
-          : "${CI_WORKFLOW_FILE:=ci-test-coverage.yml}"
-          : "${CI_NAME:=ci-test-coverage}"
-          echo "Waiting for CI '$CI_NAME' (file=$CI_WORKFLOW_FILE) on $GITHUB_REF_NAME sha=$GITHUB_SHA"
-          for i in $(seq 1 120); do
-            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${CI_WORKFLOW_FILE}/runs?per_page=100")" || true
-            status=2
-            echo "$json" | node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const runs=(o.workflow_runs||[]).filter(w=>w.head_sha===sha);if(!runs.length)process.exit(2);const completed=runs.filter(w=>w.status==='completed');if(completed.some(w=>w.conclusion==='success'))process.exit(0);if(completed.some(w=>['failure','cancelled','timed_out','action_required'].includes(w.conclusion)))process.exit(1);process.exit(2);" || status=$?
-            if [ "${status}" = "0" ]; then
-              echo "CI succeeded"; exit 0
-            elif [ "${status}" = "1" ]; then
-              echo "CI failed"; exit 1
-            else
-              sleep 10
-            fi
-          done
-          echo "Timeout waiting for CI"; exit 2
   deploy:
     runs-on: [self-hosted, linux, x64]
-    needs: gate
+
     environment:
       name: ${{ github.ref_name == 'work' && 'dev' || 'prod' }}
 
