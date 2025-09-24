@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { gate } from '../lib/ctxpack/enforce.mjs';
 import { sha256Canonical } from '../lib/ctxpack/hash.mjs';
 
+function reseal(p){ const c = structuredClone(p); delete c.hash; p.hash = sha256Canonical(c); return p; }
+
 function base() {
   function seal(p) {
     const c = structuredClone(p); delete c.hash;
@@ -40,23 +42,26 @@ test('gate passes valid pack', () => {
 
 test('gate fails on hash mismatch', () => {
   const p = base(); p.hash = '0'.repeat(64);
-  assert.throws(()=>gate(p,{mode:'enforce'}), /HASH_MISMATCH/);
+  assert.throws(()=>gate(p,{mode:'enforce'}), e=>e && e.code==='HASH_MISMATCH');
 });
 
 test('gate fails on order violation', () => {
   const p = base();
   p.sections = [{name:'diff_slices', items:[]}, ...p.sections.filter(s=>s.name!=='diff_slices')];
-  assert.throws(()=>gate(p,{mode:'enforce'}), /ORDER_VIOLATION/);
+  reseal(p);
+  assert.throws(()=>gate(p,{mode:'enforce'}), e=>e && e.code==='ORDER_VIOLATION');
 });
 
 test('gate fails when section caps exceeded', () => {
   const p = base();
   p.sections.find(s=>s.name==='diff_slices').items = new Array(10).fill(0).map((_,i)=>({id:`d${i}`, path:`lib/x${i}.mjs`}));
-  assert.throws(()=>gate(p,{mode:'enforce'}), /SECTION_CAP_EXCEEDED/);
+  reseal(p);
+  assert.throws(()=>gate(p,{mode:'enforce'}), e=>e && e.code==='SECTION_CAP_EXCEEDED');
 });
 
 test('gate fails on never_include', () => {
   const p = base();
   p.never_include = ['**/*.mjs'];
-  assert.throws(()=>gate(p,{mode:'enforce'}), /NEVER_INCLUDE_MATCH/);
+  reseal(p);
+  assert.throws(()=>gate(p,{mode:'enforce'}), e=>e && e.code==='NEVER_INCLUDE_MATCH');
 });
