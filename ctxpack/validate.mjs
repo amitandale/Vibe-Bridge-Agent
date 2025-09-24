@@ -30,7 +30,7 @@ function matchGlob(path, pattern) {
   s = s.replace(/__DOUBLE_STAR__/g, ".*");
   s = s.replace(/\?/g, "[^/]");
   const rx = "^" + s + "$";
-  return new RegExp(rx).test(String(path));
+  try { return new RegExp(rx).test(String(path)); } catch { return false; }
 }()|[\]\\]/g, "\\$&");
   const rx = "^" + esc(pattern).replace(/\\\*/g, ".*").replace(/\\\?/g, ".") + "$";
   return new RegExp(rx).test(path);
