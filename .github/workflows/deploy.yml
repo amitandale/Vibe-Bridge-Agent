@@ -31,28 +31,19 @@ jobs:
         run: |
           set -euo pipefail
           API="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${CI_WORKFLOW_FILE}/runs?per_page=50"
-          echo "Waiting for CI green on ${GITHUB_SHA} using ${CI_WORKFLOW_FILE} ..."
-          start=$(date +%s)
-          while true; do
-            curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$API"             | node -e "
-              const fs = require('fs');
-              const o = JSON.parse(fs.readFileSync(0,'utf8') || '{}');
-              const sha = process.env.GITHUB_SHA;
-              const runs = o.workflow_runs || [];
-              const r = runs.find(w => w.head_sha === sha);
-              if (!r) process.exit(2);              // not seen yet
-              if (r.status === 'completed') {
-                if (r.conclusion === 'success') process.exit(0);
-                console.error('CI concluded:', r.conclusion || 'unknown'); process.exit(1);
-              }
-              process.exit(2);                      // still in progress
-            "
-            rc=$?
-            if [ $rc -eq 0 ]; then echo "CI is green."; break; fi
-            if [ $rc -eq 1 ]; then echo "CI not green. Failing."; exit 1; fi
-            now=$(date +%s); if (( now - start > ${MAX_WAIT_SECONDS} )); then echo "Timeout waiting for CI"; exit 1; fi
-            sleep "${POLL_INTERVAL}"
-          done
+          curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$API" \
+          | node -e "
+            const fs=require('fs');
+            const o=JSON.parse(fs.readFileSync(0,'utf8')||'{}');
+            const sha=process.env.GITHUB_SHA;
+            const r=(o.workflow_runs||[]).find(w=>w.head_sha===sha);
+            if(!r){ console.error('CI run for SHA not found'); process.exit(1); }
+            if(r.status!=='completed' || r.conclusion!=='success'){
+              console.error('CI not green: status=%s conclusion=%s', r.status, r.conclusion);
+              process.exit(1);
+            }
+          "
+
       - name: Checkout
         uses: actions/checkout@v4
       - name: Bootstrap system user, dirs, and unit
