@@ -1,62 +1,32 @@
 {
-  "version": "1.0.0",
-  "project": {
-    "id": "demo-project"
+  "version": "1",
+  "meta": {
+    "project": "example-project",
+    "commit": "0000000deadbeef",
+    "created_at": "2025-09-24T00:00:00Z"
   },
-  "pr": {
-    "id": "123",
-    "branch": "work",
-    "commit_sha": "de46c84a65b022ad47e099630b9bb3db6e6f63c2"
-  },
-  "mode": "MVP",
-  "order": [
-    "templates",
-    "spec_canvas",
-    "diff_slices",
-    "linked_tests",
-    "contracts",
-    "extras"
-  ],
-  "budgets": {
-    "max_tokens": 20000,
-    "max_files": 8,
-    "max_per_file_tokens": 4000,
-    "section_caps": {
-      "templates": 2,
-      "spec_canvas": 2,
-      "diff_slices": 4,
-      "linked_tests": 4,
-      "contracts": 2,
-      "extras": 2
-    }
-  },
-  "must_include": [
+  "sections": [
     {
-      "kind": "code",
-      "section": "diff_slices",
-      "loc": {
-        "path": "src/math/add.mjs",
-        "start_line": 1,
-        "end_line": 1
-      },
-      "sha256": "c99848d14cea98a7348b6873b689c7c8c74ca1425f1ccde85402554f28c396cf",
-      "source": "git",
-      "reason": "changed line in PR"
-    }
-  ],
-  "nice_to_have": [],
-  "never_include": [
-    "node_modules",
-    ".env",
-    ".env.local",
-    "package-lock.json"
-  ],
-  "provenance": [
+      "name": "CODE",
+      "budget_tokens": 4000,
+      "slices": [
+        {
+          "id": "code/README.md",
+          "content": "# Intro\\nhello",
+          "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
     {
-      "source": "planner",
-      "generator": "bridge-agent",
-      "created_at": "2025-09-24T18:05:22.697207Z"
+      "name": "PR",
+      "slices": [
+        {
+          "id": "pr/summary",
+          "content": "Fix billing edge cases",
+          "hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "must_include": true
+        }
+      ]
     }
-  ],
-  "hash": "ae778d22b795e5246a6f7d629d5d4607e5da8d3b6ae4170d2963e7f0c7e03685"
+  ]
 }
