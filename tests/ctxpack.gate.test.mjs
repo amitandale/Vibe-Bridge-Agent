@@ -4,6 +4,12 @@ import { gate } from '../lib/ctxpack/enforce.mjs';
 import { sha256Canonical } from '../lib/ctxpack/hash.mjs';
 
 function base() {
+  function seal(p) {
+    const c = structuredClone(p); delete c.hash;
+    p.hash = sha256Canonical(c);
+    return p;
+  }
+
   const p = {
     version: '1.0.0',
     project: { id: 'demo' },
