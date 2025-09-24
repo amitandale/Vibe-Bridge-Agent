@@ -124,31 +124,29 @@ jobs:
           PORT="${{ vars.ORCH_PORT || 3002 }}"
           UNIT="/etc/systemd/system/${SERVICE}.service"
           if [ ! -f "$UNIT" ]; then
-            sudo tee "$UNIT" >/dev/null <<'UNIT'
-            [Unit]
-            Description=Vibe Bridge Agent
-            After=network.target
-      
-            [Service]
-            User=vibe
-            WorkingDirectory=/srv/vibe/bridge-agent
-            Environment=NODE_ENV=production
-            Environment=PORT=${PORT}
-            ExecStart=/usr/bin/env bash -lc 'npx next start -p ${PORT}'
-            Restart=always
-            RestartSec=2
-            KillSignal=SIGINT
-      
-            [Install]
-            WantedBy=multi-user.target
-            UNIT
+            printf '%s\n' \
+              '[Unit]' \
+              'Description=Vibe Bridge Agent' \
+              'After=network.target' \
+              '' \
+              '[Service]' \
+              'User=vibe' \
+              'WorkingDirectory=/srv/vibe/bridge-agent' \
+              'Environment=NODE_ENV=production' \
+              "Environment=PORT=${PORT}" \
+              "ExecStart=/usr/bin/env bash -lc 'npx next start -p ${PORT}'" \
+              'Restart=always' \
+              'RestartSec=2' \
+              'KillSignal=SIGINT' \
+              '' \
+              '[Install]' \
+              'WantedBy=multi-user.target' | sudo tee "$UNIT" >/dev/null
           fi
           sudo systemctl daemon-reload
-          sudo systemctl enable $SERVICE
-          sudo systemctl start $SERVICE
+          sudo systemctl enable "$SERVICE"
+          sudo systemctl restart "$SERVICE"
           sleep 2
-          sudo systemctl --no-pager --full status $SERVICE || true
-
+          sudo systemctl --no-pager --full status "$SERVICE" || true
       - name: Health check
         run: |
           set -euxo pipefail
