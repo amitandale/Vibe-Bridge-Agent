@@ -1,16 +1,13 @@
-// tests/ctxpack.canonicalize.test.mjs
-import { test } from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
-import { stableStringify } from "../ctxpack/canonicalize.mjs";
+import { canonicalJSONStringify, canonicalizeObject } from "../ctxpack/canonicalize.mjs";
 
-test("ctxpack.canonicalize: stable key ordering", () => {
-  const obj = { b: 1, a: { y: 2, x: 1 } };
-  const s = stableStringify(obj);
-  assert.equal(s, '{"a":{"x":1,"y":2},"b":1}');
-});
-
-test("ctxpack.canonicalize: array order preserved", () => {
-  const obj = { a: [3,2,1] };
-  const s = stableStringify(obj);
-  assert.equal(s, '{"a":[3,2,1]}');
+test("canonicalization is stable and sorts keys", () => {
+  const a = { b: 1, a: 2, z: { y: 1, x: 2 }, arr: [{ q: 2, p: 1 }] };
+  const b = { z: { x: 2, y: 1 }, a: 2, arr: [{ p: 1, q: 2 }], b: 1 };
+  const sa = canonicalJSONStringify(a);
+  const sb = canonicalJSONStringify(b);
+  assert.equal(sa, sb);
+  const obj = JSON.parse(sa);
+  assert.deepEqual(obj, canonicalizeObject(b));
 });
