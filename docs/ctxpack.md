@@ -16,3 +16,5 @@ node scripts/preflight/ctxpack.gate.mjs examples/contextpack.pr.json
 # enforce
 BRIDGE_CTXPACK_ENFORCE=1 node scripts/preflight/ctxpack.gate.mjs examples/contextpack.pr.json
 ```
+
+> Note: Example `never_include` entries use safe literals. Real pipelines may emit globs; tools must interpret them as globs, not raw regex.

@@ -46,9 +46,10 @@
   ],
   "nice_to_have": [],
   "never_include": [
-    "**/*.lock",
-    "node_modules/**",
-    ".env*"
+    "node_modules",
+    ".env",
+    ".env.local",
+    "package-lock.json"
   ],
   "provenance": [
     {
@@ -57,5 +58,5 @@
       "created_at": "2025-09-24T18:05:22.697508Z"
     }
   ],
-  "hash": "046674043d9b8b7f41fac7c008a70d3cf8545cf843cf01607967c5ae78e0e1ff"
+  "hash": "dd88d9d9578fa985b2b7c878eef3546bb73500b1c132dd30bf43f63f208d468a"
 }
