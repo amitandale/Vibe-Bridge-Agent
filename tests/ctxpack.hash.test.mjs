@@ -1,16 +1,12 @@
-// tests/ctxpack.hash.test.mjs
-import { test } from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
-import { packHash } from "../ctxpack/hash.mjs";
+import { computePackHash } from "../ctxpack/hash.mjs";
 
-test("ctxpack.hash: deterministic over key order", () => {
-  const a = { version: "1", meta: { project: "p", commit: "c", created_at: "t" }, sections: [] };
-  const b = { sections: [], meta: { created_at: "t", commit: "c", project: "p" }, version: "1" };
-  assert.equal(packHash(a), packHash(b));
-});
-
-test("ctxpack.hash: ignores undefined properties", () => {
-  const a = { version: "1", meta: { project: "p", commit: "c", created_at: "t" }, sections: [], extra: undefined };
-  const b = { version: "1", meta: { project: "p", commit: "c", created_at: "t" }, sections: [] };
-  assert.equal(packHash(a), packHash(b));
+test("hash excludes top-level hash field", () => {
+  const pack = { version: "1.0.0", project: {id:"x"}, pr:{id:"1",branch:"b",commit_sha:"deadbeef"}, mode:"PR",
+    order:["templates"], budgets:{max_tokens:1,max_files:0,max_per_file_tokens:1,section_caps:{templates:0}},
+    must_include:[], nice_to_have:[], never_include:[], provenance:[], hash:"" };
+  const h1 = computePackHash(pack);
+  const h2 = computePackHash({...pack, hash:"ff".repeat(32)});
+  assert.equal(h1, h2);
 });

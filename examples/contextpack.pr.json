@@ -8,7 +8,7 @@
     "branch": "work",
     "commit_sha": "de46c84a65b022ad47e099630b9bb3db6e6f63c2"
   },
-  "mode": "MVP",
+  "mode": "PR",
   "order": [
     "templates",
     "spec_canvas",
@@ -54,8 +54,8 @@
     {
       "source": "planner",
       "generator": "bridge-agent",
-      "created_at": "2025-09-24T18:05:22.697207Z"
+      "created_at": "2025-09-24T18:05:22.697508Z"
     }
   ],
-  "hash": "045de6a32c107ac54b3df3706c8b85fe9e75d9e5d19439bf0b27a000f0d126a5"
+  "hash": "046674043d9b8b7f41fac7c008a70d3cf8545cf843cf01607967c5ae78e0e1ff"
 }
