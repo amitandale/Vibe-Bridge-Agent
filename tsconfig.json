@@ -12,8 +12,7 @@
     "noEmit": true,
     "types": [
       "node",
-      "react",
-      "react-dom"
+      "react"
     ]
   },
   "include": [
