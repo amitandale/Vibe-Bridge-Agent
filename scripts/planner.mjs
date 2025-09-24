@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/planner.mjs
 import fs from 'node:fs/promises';
-import { planPR } from '../lib/planner/index.mjs';
+import { planPR, planFromSignals } from '../lib/planner/index.mjs';
 
 function parseArgs(argv){
   const args = { labels:[], mode:'PR' };
@@ -26,17 +26,20 @@ async function main(){
     process.exit(2);
   }
   const diff = a.diffPath ? await fs.readFile(a.diffPath,'utf8') : '';
-  const pack = planPR({
+  const inputs = {
     projectId: process.env.PROJECT_ID || 'unknown',
     pr: { id: a.pr, branch: a.branch || process.env.GIT_BRANCH || 'work', commit_sha: a.commit },
     mode: a.mode,
     labels: a.labels,
     diff,
     fileContents: {},
-  });
+  };
+  const report = planFromSignals(inputs);
+  const pack = planPR(inputs);
   if (a.cmd === 'dry-run') {
-    const diffSlices = pack.sections.find(s=>s.name==='diff_slices').items.length;
-    console.log(JSON.stringify({ ok:true, sections: pack.sections.map(s=>({name:s.name, n:s.items.length})), diffSlices }, null, 2));
+    const counts = Object.fromEntries(pack.sections.map(s=>[s.name, s.items.length]));
+    const out = { ok: true, sections: counts, omissions: report.omissions || [] };
+    console.log(JSON.stringify(out, null, 2));
     process.exit(0);
   } else {
     const out = JSON.stringify(pack, null, 2);
