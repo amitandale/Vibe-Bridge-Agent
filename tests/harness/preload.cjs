@@ -1,107 +1,150 @@
 // tests/harness/preload.cjs
-// CommonJS preload. Use with: NODE_OPTIONS="--require ./tests/harness/preload.cjs"
-// Purpose: attribute late async errors to scheduling callsite across Node 18/20 runners.
+// Robust async attribution for Node's test runner.
+// Load via: NODE_OPTIONS="--require ./tests/harness/preload.cjs"
+// Captures scheduling site with AsyncLocalStorage and patches RegExp to annotate runtime regex errors.
 
 const ENABLED = process.env.LEAK_GUARD !== "0";
+if (!ENABLED) {
+  console.error("[async-guardian] disabled via LEAK_GUARD=0");
+  return;
+}
+
+const { AsyncLocalStorage } = require("node:async_hooks");
+const als = new AsyncLocalStorage();
 
 function rel(p){
   try { return String(p).replace(/\\/g,'/').replace(process.cwd().replace(/\\/g,'/') + '/', ''); }
   catch { return String(p); }
 }
-function callsite(skipSelfMatch){
+function callsite(skipSelf){
   const e = new Error();
   const lines = (e.stack || "").split("\n").slice(2);
   for (const ln of lines) {
-    if (skipSelfMatch && ln.includes("preload.cjs")) continue;
+    if (skipSelf && ln.includes("tests/harness/preload.cjs")) continue;
     const m = ln.match(/\((.*?):(\d+):(\d+)\)/) || ln.match(/at (.*?):(\d+):(\d+)/);
     if (m) return `${rel(m[1])}:${m[2]}`;
   }
   return "unknown";
 }
-function tag(err, meta){
-  try { if (err && typeof err === "object") err.__leak = Object.assign(err.__leak || {}, meta); } catch {}
+function origin(type){
+  return { type, site: callsite(true), at: new Date().toISOString() };
+}
+function runWithOrigin(type, fn, thisArg, args){
+  const ctx = origin(type);
+  return als.run(ctx, () => fn.apply(thisArg, args));
+}
+function tagAndPrint(err, extra){
+  try {
+    const ctx = als.getStore();
+    if (ctx) {
+      err.__async_origin = ctx;
+    }
+    if (extra && typeof extra === "object") {
+      err.__extra = Object.assign(err.__extra || {}, extra);
+    }
+  } catch {}
+  return err;
 }
 
-if (ENABLED) {
-  const REG = new Map();
-  const INTERVALS = new Set();
+// ---- Patch timers and microtasks ----
+const _setTimeout = global.setTimeout;
+const _setImmediate = global.setImmediate;
+const _setInterval = global.setInterval;
+const _queueMicrotask = global.queueMicrotask || (cb => Promise.resolve().then(cb));
+const _nextTick = process.nextTick;
 
-  function meta(type, site){ return { type, site, at: new Date().toISOString() }; }
-  function wrap(type, fn, site){
-    if (typeof fn !== "function") return fn;
-    const m = meta(type, site);
-    function wrapped(...args){
-      try { return fn.apply(this, args); }
-      catch (e){ tag(e, m); throw e; }
-      finally { if (REG.has(wrapped) && REG.get(wrapped).type !== "setInterval") REG.delete(wrapped); }
+global.setTimeout = function(cb, ms, ...rest){
+  const site = callsite(true);
+  return _setTimeout(function(...a){ return runWithOrigin("setTimeout@" + site, cb, this, a); }, ms, ...rest);
+};
+global.setImmediate = function(cb, ...rest){
+  const site = callsite(true);
+  return _setImmediate(function(...a){ return runWithOrigin("setImmediate@" + site, cb, this, a); }, ...rest);
+};
+global.setInterval = function(cb, ms, ...rest){
+  const site = callsite(true);
+  return _setInterval(function(...a){ return runWithOrigin("setInterval@" + site, cb, this, a); }, ms, ...rest);
+};
+global.queueMicrotask = function(cb){
+  const site = callsite(true);
+  return _queueMicrotask(function(){ return runWithOrigin("queueMicrotask@" + site, cb, this, []); });
+};
+process.nextTick = function(cb, ...rest){
+  const site = callsite(true);
+  return _nextTick.call(process, function(...a){ return runWithOrigin("nextTick@" + site, cb, this, a); }, ...rest);
+};
+
+// ---- Patch Promise continuations ----
+const _then = Promise.prototype.then;
+const _catch = Promise.prototype.catch;
+const _finally = Promise.prototype.finally;
+
+Promise.prototype.then = function(onFulfilled, onRejected){
+  const site = callsite(true);
+  const wrap = (fn, kind) => typeof fn === "function"
+    ? function(...args){ return runWithOrigin(kind + "@" + site, fn, this, args); }
+    : fn;
+  return _then.call(this, wrap(onFulfilled, "Promise.then"), wrap(onRejected, "Promise.then"));
+};
+Promise.prototype.catch = function(onRejected){
+  const site = callsite(true);
+  const fn = typeof onRejected === "function"
+    ? function(...args){ return runWithOrigin("Promise.catch@" + site, onRejected, this, args); }
+    : onRejected;
+  return _catch.call(this, fn);
+};
+Promise.prototype.finally = function(onFinally){
+  const site = callsite(true);
+  const fn = typeof onFinally === "function"
+    ? function(...args){ return runWithOrigin("Promise.finally@" + site, onFinally, this, args); }
+    : onFinally;
+  return _finally.call(this, fn);
+};
+
+// ---- Guard RegExp to annotate runtime regex errors with construction site and async origin ----
+const RealRegExp = RegExp;
+function GuardedRegExp(pattern, flags){
+  try {
+    // Support 'new RegExp' and RegExp(...) calls
+    return new RealRegExp(pattern, flags);
+  } catch (e) {
+    const site = callsite(true);
+    tagAndPrint(e, { regex_site: site });
+    // Enrich message once to avoid noise
+    if (!e.__annotated) {
+      const o = e.__async_origin;
+      e.message += ` [regex at ${site}${o ? `; scheduled by ${o.type}` : ""}]`;
+      e.__annotated = true;
     }
-    REG.set(wrapped, m);
-    return wrapped;
+    throw e;
   }
-  function summary(prefix){
-    if (!REG.size && !INTERVALS.size) return;
-    console.error(prefix || "[preload] pending async:");
-    for (const [,m] of REG.entries()) console.error(` - pending ${m.type} scheduled at ${m.site} @ ${m.at}`);
-    for (const t of INTERVALS){ const m = t && t.__leak_meta; if (m) console.error(` - active setInterval scheduled at ${m.site} @ ${m.at}`); }
-  }
-
-  // Timers + microtasks
-  const _setTimeout = global.setTimeout;
-  const _setImmediate = global.setImmediate;
-  const _setInterval = global.setInterval;
-  const _queueMicrotask = global.queueMicrotask || (cb => Promise.resolve().then(cb));
-  const _nextTick = process.nextTick;
-
-  const _clearTimeout = global.clearTimeout;
-  const _clearImmediate = global.clearImmediate;
-  const _clearInterval = global.clearInterval;
-
-  global.setTimeout = function(cb, ms, ...rest){ const site = callsite(true); return _setTimeout(wrap("setTimeout", cb, site), ms, ...rest); };
-  global.setImmediate = function(cb, ...rest){ const site = callsite(true); return _setImmediate(wrap("setImmediate", cb, site), ...rest); };
-  global.setInterval = function(cb, ms, ...rest){ const site = callsite(true); const w = wrap("setInterval", cb, site); const t = _setInterval(w, ms, ...rest); try { t.__leak_meta = meta("setInterval", site);} catch{} INTERVALS.add(t); return t; };
-  global.queueMicrotask = function(cb){ const site = callsite(true); return _queueMicrotask(wrap("queueMicrotask", cb, site)); };
-  process.nextTick = function(cb, ...rest){ const site = callsite(true); return _nextTick.call(process, wrap("nextTick", cb, site), ...rest); };
-
-  // Promise continuations
-  const _then = Promise.prototype.then;
-  const _catch = Promise.prototype.catch;
-  const _finally = Promise.prototype.finally;
-  Promise.prototype.then = function(onFulfilled, onRejected){
-    const site = callsite(true);
-    const w = f => typeof f === "function" ? function(...args){ try { return f.apply(this, args); } catch(e){ tag(e, meta("Promise.then", site)); throw e; } } : f;
-    return _then.call(this, w(onFulfilled), w(onRejected));
-  };
-  Promise.prototype.catch = function(onRejected){
-    const site = callsite(true);
-    const w = typeof onRejected === "function" ? function(...args){ try { return onRejected.apply(this, args); } catch(e){ tag(e, meta("Promise.catch", site)); throw e; } } : onRejected;
-    return _catch.call(this, w);
-  };
-  Promise.prototype.finally = function(onFinally){
-    const site = callsite(true);
-    const w = typeof onFinally === "function" ? function(...args){ try { return onFinally.apply(this, args); } catch(e){ tag(e, meta("Promise.finally", site)); throw e; } } : onFinally;
-    return _finally.call(this, w);
-  };
-
-  process.on("uncaughtException", (err) => {
-    const tagInfo = err && err.__leak;
-    if (tagInfo) {
-      console.error(`[async-guardian] uncaught from ${tagInfo.type} scheduled at ${tagInfo.site}`);
-    } else {
-      console.error("[async-guardian] uncaughtException with no tag. Recent pending tasks:");
-      summary();
-    }
-  });
-  process.on("unhandledRejection", (reason) => {
-    const err = reason instanceof Error ? reason : null;
-    const tagInfo = err && err.__leak;
-    if (tagInfo) {
-      console.error(`[async-guardian] rejection from ${tagInfo.type} scheduled at ${tagInfo.site}`);
-    } else {
-      console.error("[async-guardian] unhandledRejection with no tag. Recent pending tasks:");
-      summary();
-    }
-  });
-  process.on("beforeExit", () => { summary("[async-guardian] summary before exit:"); });
 }
+GuardedRegExp.prototype = RealRegExp.prototype;
+Object.setPrototypeOf(GuardedRegExp, RealRegExp);
+global.RegExp = GuardedRegExp;
 
-module.exports = {}; // ensure CJS
+// ---- Global error reporters ----
+process.on("uncaughtException", (err) => {
+  const o = err && (err.__async_origin || (err.__extra && err.__extra.origin));
+  if (o) {
+    console.error(`[async-guardian] uncaught from ${o.type}`);
+  } else {
+    console.error("[async-guardian] uncaught with no async origin");
+  }
+  const rxSite = err && err.__extra && err.__extra.regex_site;
+  if (rxSite) console.error(`[async-guardian] regex constructed at ${rxSite}`);
+  if (err && err.stack) console.error(err.stack);
+});
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  const o = err && (err.__async_origin || (err.__extra && err.__extra.origin));
+  if (o) {
+    console.error(`[async-guardian] rejection from ${o.type}`);
+  } else {
+    console.error("[async-guardian] rejection with no async origin");
+  }
+  const rxSite = err && err.__extra && err.__extra.regex_site;
+  if (rxSite) console.error(`[async-guardian] regex constructed at ${rxSite}`);
+  if (err && err.stack) console.error(err.stack);
+});
+
