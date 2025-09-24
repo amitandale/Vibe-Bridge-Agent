@@ -105,7 +105,30 @@ jobs:
           sudo -u vibe env HOME=/home/vibe bash -lc 'cd /srv/vibe/bridge-agent && npm ci --omit=dev && npx next build'
       - name: Start and enable service
         run: |
-          set -euxo pipefail
+          set -euo pipefail
+          SERVICE="${SERVICE:-bridge-agent}"
+          PORT="${{ vars.ORCH_PORT || 3002 }}"
+          UNIT="/etc/systemd/system/${SERVICE}.service"
+          if [ ! -f "$UNIT" ]; then
+            sudo tee "$UNIT" >/dev/null <<'UNIT'
+            [Unit]
+            Description=Vibe Bridge Agent
+            After=network.target
+      
+            [Service]
+            User=vibe
+            WorkingDirectory=/srv/vibe/bridge-agent
+            Environment=NODE_ENV=production
+            Environment=PORT=${PORT}
+            ExecStart=/usr/bin/env bash -lc 'npx next start -p ${PORT}'
+            Restart=always
+            RestartSec=2
+            KillSignal=SIGINT
+      
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+          fi
           sudo systemctl daemon-reload
           sudo systemctl enable $SERVICE
           sudo systemctl start $SERVICE

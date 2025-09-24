@@ -9,37 +9,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      statuses: read
-    env:
-      CI_NAME: CI
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - name: Wait for CI success
-        run: |
-          set -euo pipefail
-          echo "Waiting for CI '$CI_NAME' on $GITHUB_REF_NAME sha=$GITHUB_SHA"
-          for i in $(seq 1 120); do
-            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&per_page=100")" || true
-            status=2
-            echo "$json" | node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const name=process.env.CI_NAME||'CI';const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);if(!runs.length)process.exit(2);const r=runs[0];if(r.status!=='completed')process.exit(2);if(r.conclusion==='success')process.exit(0);if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion))process.exit(1);process.exit(2);" || status=$?
-            if [ "${status}" = "0" ]; then
-              echo "CI succeeded"; exit 0
-            elif [ "${status}" = "1" ]; then
-              echo "CI failed"; exit 1
-            else
-              sleep 10
-            fi
-          done
-          echo "Timeout waiting for CI"; exit 2
   deploy:
     runs-on: [self-hosted, linux, x64]
-    needs: gate
+
     environment:
       name: ${{ github.ref_name == 'work' && 'dev' || 'prod' }}
 
@@ -50,35 +22,30 @@ jobs:
       SERVICE: vibe-orchestrator
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Wait for CI workflow success
-        if: ${{ github.ref_name == 'work' || github.ref_name == 'main' }}
+      - name: "Guard: require CI green for this SHA"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CI_NAME: ${{ vars.CI_WORKFLOW_NAME || 'CI' }}
+          CI_WORKFLOW_FILE: ci-test-coverage.yml
+          POLL_INTERVAL: '3'
+          MAX_WAIT_SECONDS: '900'
         run: |
           set -euo pipefail
-          echo "Waiting for CI '$CI_NAME' on $GITHUB_REF_NAME sha=$GITHUB_SHA"
-          for i in $(seq 1 90); do
-            json="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&per_page=100")"
-            code=$?
-            if [ $code -ne 0 ]; then
-              echo "API error, retrying..."; sleep 5; continue
-            fi
-            echo "$json" | node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(0,'utf8'));const sha=process.env.GITHUB_SHA;const name=process.env.CI_NAME;const runs=o.workflow_runs.filter(w=>w.head_sha===sha && w.name===name);if(!runs.length)process.exit(2);const r=runs[0];if(r.status!=='completed')process.exit(2);if(r.conclusion==='success')process.exit(0);if(['failure','cancelled','timed_out','action_required'].includes(r.conclusion))process.exit(1);process.exit(2);" || status=$?
-            status=${status:-0}
-            if [ "${status}" = "0" ]; then
-              echo "CI succeeded"; break
-            elif [ "${status}" = "1" ]; then
-              echo "CI failed"; exit 1
-            else
-              sleep 10
-            fi
-            unset status
-          done
+          API="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${CI_WORKFLOW_FILE}/runs?per_page=50"
+          curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$API" \
+          | node -e "
+            const fs=require('fs');
+            const o=JSON.parse(fs.readFileSync(0,'utf8')||'{}');
+            const sha=process.env.GITHUB_SHA;
+            const r=(o.workflow_runs||[]).find(w=>w.head_sha===sha);
+            if(!r){ console.error('CI run for SHA not found'); process.exit(1); }
+            if(r.status!=='completed' || r.conclusion!=='success'){
+              console.error('CI not green: status=%s conclusion=%s', r.status, r.conclusion);
+              process.exit(1);
+            }
+          "
 
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Bootstrap system user, dirs, and unit
         run: |
           set -euxo pipefail
@@ -116,8 +83,26 @@ jobs:
       - name: Install production deps
         working-directory: ${{ env.SRV_DIR }}
         run: |
-          sudo -u vibe npm ci --omit=dev || npm ci --omit=dev
-
+          set -euo pipefail
+          sudo -u vibe env HOME=/home/vibe bash -lc '
+            set -euo pipefail;
+            cd /srv/vibe/bridge-agent && \
+            ( npm ci || ( npm install --package-lock-only && npm ci ) ) && \
+            npx next build && \
+            npm prune --omit=dev
+          '
+      - name: Install deps (prod)
+        run: |
+          set -euxo pipefail
+          sudo -u vibe bash -lc 'cd /srv/vibe/bridge-agent && npm ci --omit=dev'
+      - name: Ensure vibe HOME
+        run: |
+          set -euxo pipefail
+          sudo install -d -m 755 -o vibe -g vibe /home/vibe
+      - name: Install deps and build
+        run: |
+          set -euxo pipefail
+          sudo -u vibe env HOME=/home/vibe bash -lc 'cd /srv/vibe/bridge-agent && npm ci --omit=dev && npx next build'
       - name: Start and enable service
         run: |
           set -euxo pipefail
@@ -130,4 +115,4 @@ jobs:
       - name: Health check
         run: |
           set -euxo pipefail
-          curl -sSf "http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/app/api/billing/prices" >/dev/null
+          curl -sSf "http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/api/billing/prices" >/dev/null
