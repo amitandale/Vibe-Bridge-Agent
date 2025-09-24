@@ -20,10 +20,56 @@ function positiveInt(n) { return Number.isInteger(n) && n > 0; }
 function nonnegInt(n) { return Number.isInteger(n) && n >= 0; }
 
 function matchGlob(path, pattern) {
-  // Convert simple glob to safe regex.
-  // Rules: "**" -> ".*" (across dirs), "*" -> "[^/]*" (single segment), "?" -> "[^/]"
-  // Escape regex specials first, but keep * and ? for conversion.
-  const esc = (s) => s.replace(/([.+^${}()|[\]\])/g, "\$1");
+  // Safe glob matcher without RegExp. Supports **, *, ?, and backslash escapes. '/' is a segment separator.
+  const p = String(path);
+  const g = String(pattern);
+  const memo = new Map();
+  function key(i, j){ return i + ":" + j; }
+  function eatStars(idx) {
+    // collapse consecutive * into single '*' tokens, but keep '**' pairs distinct
+    let i = idx, stars = 0;
+    while (i < g.length && g[i] === '*') { stars++; i++; }
+    return [i, stars];
+  }
+  function match(i, j) {
+    const k = key(i, j);
+    if (memo.has(k)) return memo.get(k);
+    // end of pattern
+    if (j === g.length) return i === p.length;
+    let res = false;
+    const ch = g[j];
+    if (ch === '\\') { // escape next char literally
+      if (j + 1 < g.length && i < p.length && p[i] === g[j+1]) {
+        res = match(i+1, j+2);
+      } else {
+        res = false;
+      }
+    } else if (ch === '*') {
+      // check if this is a **
+      const isDouble = (j + 1 < g.length && g[j+1] === '*');
+      if (isDouble) {
+        // ** matches zero or more of any char, including '/'
+        // Collapse multiple stars: ***, treat as **
+        let jj = j;
+        while (jj < g.length && g[jj] === '*') jj++;
+        // Try all suffixes
+        res = match(i, jj) || (i < p.length && match(i+1, j));
+      } else {
+        // * matches zero or more of any char except '/'
+        res = match(i, j+1) || (i < p.length && p[i] !== '/' && match(i+1, j));
+      }
+    } else if (ch === '?') {
+      // match any single char except '/'
+      res = (i < p.length && p[i] !== '/') && match(i+1, j+1);
+    } else {
+      // literal
+      res = (i < p.length && p[i] === ch) && match(i+1, j+1);
+    }
+    memo.set(k, res);
+    return res;
+  }
+  return match(0, 0);
+}()|[\]\])/g, "\$1");
   let s = esc(String(pattern));
   s = s.replace(/\*\*/g, "__DOUBLE_STAR__");
   s = s.replace(/\*/g, "[^/]*");
