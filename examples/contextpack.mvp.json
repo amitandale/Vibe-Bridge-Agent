@@ -1,0 +1,32 @@
+{
+  "version": "1",
+  "meta": {
+    "project": "example-project",
+    "commit": "0000000deadbeef",
+    "created_at": "2025-09-24T00:00:00Z"
+  },
+  "sections": [
+    {
+      "name": "CODE",
+      "budget_tokens": 4000,
+      "slices": [
+        {
+          "id": "code/README.md",
+          "content": "# Intro\\nhello",
+          "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "PR",
+      "slices": [
+        {
+          "id": "pr/summary",
+          "content": "Fix billing edge cases",
+          "hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "must_include": true
+        }
+      ]
+    }
+  ]
+}
