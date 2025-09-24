@@ -31,19 +31,33 @@ jobs:
         run: |
           set -euo pipefail
           API="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${CI_WORKFLOW_FILE}/runs?per_page=50"
+          echo "Check CI for ${GITHUB_SHA} in ${CI_WORKFLOW_FILE} (pass if any completed success exists)"
           curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$API" \
           | node -e "
             const fs=require('fs');
             const o=JSON.parse(fs.readFileSync(0,'utf8')||'{}');
             const sha=process.env.GITHUB_SHA;
-            const r=(o.workflow_runs||[]).find(w=>w.head_sha===sha);
-            if(!r){ console.error('CI run for SHA not found'); process.exit(1); }
-            if(r.status!=='completed' || r.conclusion!=='success'){
-              console.error('CI not green: status=%s conclusion=%s', r.status, r.conclusion);
+            const runs=(o.workflow_runs||[]).filter(w=>w && w.head_sha===sha);
+            if(!runs.length){
+              console.error('CI run for SHA not found');
+              process.exit(2);
+            }
+            const anySuccess=runs.some(w=>w.status==='completed' && w.conclusion==='success');
+            const anyCompletedNonSuccess=runs.some(w=>w.status==='completed' && w.conclusion && w.conclusion!=='success');
+            if(anySuccess){
+              console.log('CI is green for this SHA (at least one completed success).');
+              process.exit(0);
+            }
+            if(anyCompletedNonSuccess){
+              const r=runs.find(w=>w.status==='completed' && w.conclusion && w.conclusion!=='success');
+              console.error('CI completed non-green: conclusion=%s', r && r.conclusion);
               process.exit(1);
             }
+            // Only queued/in_progress runs exist, but no completed success yet
+            const r=runs[0]||{};
+            console.error('CI not green yet: status=%s conclusion=%s', r.status, r.conclusion);
+            process.exit(1);
           "
-
       - name: Checkout
         uses: actions/checkout@v4
       - name: Bootstrap system user, dirs, and unit
