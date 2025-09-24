@@ -1,6 +1,5 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-
-test('Smoke', () => {
-  assert.equal(true, true);
+describe('Smoke', () => {
+  it('runs Jest successfully', () => {
+    expect(true).toBe(true);
+  });
 });

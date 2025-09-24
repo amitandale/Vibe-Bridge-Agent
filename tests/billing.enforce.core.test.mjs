@@ -1,12 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 test('checkBudget: denies when hard cap would be exceeded', async () => {
   const tmp = path.join(process.cwd(), '.tmp-home-enforce-1');
   process.env.HOME = tmp;
-  await rm(tmp, { recursive: true, force: true });
   await mkdir(path.join(tmp, '.vibe', 'billing'), { recursive: true });
   // Set a tiny budget
   await writeFile(path.join(tmp, '.vibe', 'billing', 'budgets.json'),
@@ -21,7 +20,6 @@ test('checkBudget: denies when hard cap would be exceeded', async () => {
 test('recordUsage: writes event and is idempotent', async () => {
   const tmp = path.join(process.cwd(), '.tmp-home-enforce-2');
   process.env.HOME = tmp;
-  await rm(tmp, { recursive: true, force: true });
   await mkdir(path.join(tmp, '.vibe', 'billing'), { recursive: true });
   const ef = await import('../lib/billing/enforce.mjs');
   const ev = { callId:'call-1', provider:'perplexity', model:'pplx-7b-chat', inputTokens:10, outputTokens:0, costUsd:0.001, projectId:'demo' };
