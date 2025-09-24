@@ -14,7 +14,7 @@ const base = () => ({
   nice_to_have: [],
   never_include: [],
   provenance: [],
-  hash: '0'*64
+  hash: '0'.repeat(64)
 });
 
 test('ctxpack: minimal valid top-level shape', () => {
