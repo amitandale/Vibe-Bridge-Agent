@@ -12,11 +12,13 @@ jobs:
         with:
           node-version: 20
       - name: Install
-      - name: Regex check
-        run: node scripts/pretest/find-bad-regex.mjs
         run: npm ci || npm i
       - name: Type check
         run: npx -y -p typescript@5.6.3 tsc -p tsconfig.json --noEmit
+
+      - name: Regex check
+        run: node scripts/pretest/find-bad-regex.mjs
+        
       - name: Prep SQLite DB path
         run: |
           set -euo pipefail
