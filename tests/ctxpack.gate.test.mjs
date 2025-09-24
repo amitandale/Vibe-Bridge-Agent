@@ -15,7 +15,7 @@ test("gate-equivalent validation rejects when must_include > max_files", () => {
     } },
     must_include: [{
       kind:"code", section:"diff_slices", loc:{path:"src/a.mjs", start_line:1, end_line:1},
-      sha256:"0"*64, source:"git"
+      sha256:"0".repeat(64), source:"git"
     }],
     nice_to_have: [],
     never_include: [],

@@ -59,7 +59,12 @@ export function normalizePackPaths(pack) {
   // order: filter to allowed, keep given order but dedupe
   if (Array.isArray(pack.order)) {
     const seen = new Set();
-    pack.order = pack.order.filter(s => ALLOWED_SECTIONS.includes(s) && !seen.has(s) && seen.add(s) === false);
+    pack.order = pack.order.filter((sec) => {
+      if (!ALLOWED_SECTIONS.includes(sec)) return false;
+      if (seen.has(sec)) return false;
+      seen.add(sec);
+      return true;
+    });
   }
   return pack;
 }

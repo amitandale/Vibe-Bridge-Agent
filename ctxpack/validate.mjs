@@ -20,8 +20,18 @@ function positiveInt(n) { return Number.isInteger(n) && n > 0; }
 function nonnegInt(n) { return Number.isInteger(n) && n >= 0; }
 
 function matchGlob(path, pattern) {
-  // simple glob: * -> .*, ? -> .
-  const esc = s => s.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  // Convert simple glob to safe regex.
+  // Rules: "**" -> ".*" (across dirs), "*" -> "[^/]*" (single segment), "?" -> "[^/]"
+  // Escape regex specials first, but keep * and ? for conversion.
+  const esc = (s) => s.replace(/([.+^${}()|[\]\])/g, "\$1");
+  let s = esc(String(pattern));
+  s = s.replace(/\*\*/g, "__DOUBLE_STAR__");
+  s = s.replace(/\*/g, "[^/]*");
+  s = s.replace(/__DOUBLE_STAR__/g, ".*");
+  s = s.replace(/\?/g, "[^/]");
+  const rx = "^" + s + "$";
+  return new RegExp(rx).test(String(path));
+}()|[\]\\]/g, "\\$&");
   const rx = "^" + esc(pattern).replace(/\\\*/g, ".*").replace(/\\\?/g, ".") + "$";
   return new RegExp(rx).test(path);
 }

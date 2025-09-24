@@ -15,7 +15,7 @@ function goodPack() {
     } },
     must_include: [{
       kind:"code", section:"diff_slices", loc:{path:"src/a.mjs", start_line:1, end_line:1},
-      sha256:"0"*64, source:"git"
+      sha256:"0".repeat(64), source:"git"
     }],
     nice_to_have: [],
     never_include: ["**/*.lock"],
@@ -45,11 +45,11 @@ test("must_include over cap fails", () => {
   const p = goodPack();
   p.must_include.push({
     kind:"code", section:"diff_slices", loc:{path:"src/b.mjs", start_line:1, end_line:1},
-    sha256:"0"*64, source:"git"
+    sha256:"0".repeat(64), source:"git"
   });
   p.must_include.push({
     kind:"code", section:"diff_slices", loc:{path:"src/c.mjs", start_line:1, end_line:1},
-    sha256:"0"*64, source:"git"
+    sha256:"0".repeat(64), source:"git"
   });
   p.hash = computePackHash(p);
   const res = validatePack(p);
