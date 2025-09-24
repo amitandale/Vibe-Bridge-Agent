@@ -1,0 +1,16 @@
+{
+  "labels": [
+    "api"
+  ],
+  "diff": "diff --git a/lib/x.mjs b/lib/x.mjs\\n--- a/lib/x.mjs\\n+++ b/lib/x.mjs\\n@@ -0,0 +1,1 @@\\n+export function add(a,b){return a+b}\\n",
+  "fileContents": {
+    "lib/x.mjs": "export function add(a,b){return a+b}\\n"
+  },
+  "pr": {
+    "id": "7",
+    "branch": "work",
+    "commit_sha": "deadbee"
+  },
+  "mode": "PR",
+  "projectId": "demo"
+}

@@ -1,0 +1,17 @@
+{
+  "labels": [
+    "api",
+    "ui"
+  ],
+  "diff": "diff --git a/app/api/route.mjs b/app/api/route.mjs\\n--- a/app/api/route.mjs\\n+++ b/app/api/route.mjs\\n@@ -0,0 +1,1 @@\\n+export async function GET(){}\\n",
+  "fileContents": {
+    "app/api/route.mjs": "export async function GET(){}\\n"
+  },
+  "pr": {
+    "id": "8",
+    "branch": "work",
+    "commit_sha": "deadbee"
+  },
+  "mode": "PR",
+  "projectId": "demo"
+}

@@ -1,0 +1,14 @@
+{
+  "labels": [],
+  "diff": "diff --git a/lib/foo.mjs b/lib/foo.mjs\\n--- a/lib/foo.mjs\\n+++ b/lib/foo.mjs\\n@@ -0,0 +1,1 @@\\n+function foo(){}\\n",
+  "fileContents": {
+    "lib/foo.mjs": "function foo(){}\\n"
+  },
+  "pr": {
+    "id": "9",
+    "branch": "work",
+    "commit_sha": "deadbee"
+  },
+  "mode": "FIX",
+  "projectId": "demo"
+}
