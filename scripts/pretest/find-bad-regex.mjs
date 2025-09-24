@@ -1,13 +1,16 @@
 // scripts/pretest/find-bad-regex.mjs
-// Fast-fail parser that locates files with invalid RegExp literals before tests run.
-// Best practice: compile without executing. Reports file and line.
+// Find files that contain invalid RegExp literals by compiling modules without executing them.
+// Usage:
+//   node scripts/pretest/find-bad-regex.mjs <folder> [folder2 ...]
+// If no folders are provided, defaults to: tests src ctxpack lib app
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import vm from "node:vm";
 
-const roots = ["tests", "src", "ctxpack", "lib"];
-const exts = new Set([".mjs", ".js", ".cjs", ".mts", ".cts", ".ts"]); // ts allowed if plain enough
+const argv = process.argv.slice(2).filter(Boolean);
+const roots = argv.length ? argv : ["tests", "src", "ctxpack", "lib", "app"];
+const exts = new Set([".mjs", ".js", ".cjs", ".mts", ".cts", ".ts"]); // TS allowed if plain enough
 
 async function *walk(dir) {
   let ents;
@@ -32,17 +35,18 @@ for (const root of roots) {
   for await (const file of walk(root)) {
     const code = await fs.readFile(file, "utf8");
     try {
-      // Compile only. Do not evaluate. Attach URL so stack shows the file.
+      const id = pathToFileURL(path.resolve(file)).href;
       const mod = new vm.SourceTextModule(code, {
-        identifier: pathToFileURL(path.resolve(file)).href,
-        initializeImportMeta(meta) { meta.url = pathToFileURL(path.resolve(file)).href; },
+        identifier: id,
+        initializeImportMeta(meta) { meta.url = id; },
       });
-      await mod.link(() => ({}) ); // dummy linker
-      // Parse phase happens on creation; link here to surface any import syntax too.
+      // Linking is enough to surface syntax issues across imports without execution.
+      await mod.link(() => ({}) );
     } catch (e) {
-      if (e && /Invalid regular expression/i.test(String(e.message))) {
-        failures.push({ file, message: e.message.split("\n")[0] });
-        console.error(`[bad-regex] ${file}: ${e.message.split("\n")[0]}`);
+      const msg = String(e && e.message || e);
+      if (/Invalid regular expression/i.test(msg)) {
+        failures.push({ file, message: msg.split("\n")[0] });
+        console.error(`[bad-regex] ${file}: ${msg.split("\n")[0]}`);
       }
     }
   }
@@ -50,6 +54,8 @@ for (const root of roots) {
 
 if (failures.length) {
   console.error(`\nFound ${failures.length} file(s) with invalid regex literals.`);
-  console.error("Fix the offending literal or convert to new RegExp('...') with proper escaping.");
+  console.error(`Scanned folders: ${roots.join(", ")}`);
   process.exit(1);
+} else {
+  console.log(`[bad-regex] OK. Scanned folders: ${roots.join(", ")}`);
 }

@@ -17,7 +17,7 @@ jobs:
         run: npx -y -p typescript@5.6.3 tsc -p tsconfig.json --noEmit
 
       - name: Regex check
-        run: node scripts/pretest/find-bad-regex.mjs
+        run: node scripts/pretest/find-bad-regex.mjs tests src ctxpack lib app
         
       - name: Prep SQLite DB path
         run: |
