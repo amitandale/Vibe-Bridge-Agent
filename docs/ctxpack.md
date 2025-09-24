@@ -7,3 +7,7 @@ Versioned, canonical JSON that defines all context sent to agents.
 - Examples: assets/examples/ctxpack/*.json
 
 Determinism: stable key order, UTF-8, full-pack hash.
+
+
+## Integration
+Set `CTXPACK_GATE=warn` to enable preflight in orchestrator before generation. The gate enforces schema, order, budgets, and hash. Build packs with `lib/ctxpack/builder.mjs` and enrich sections in later PRs.
