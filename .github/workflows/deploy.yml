@@ -84,7 +84,13 @@ jobs:
         working-directory: ${{ env.SRV_DIR }}
         run: |
           set -euo pipefail
-          ( cd /srv/vibe/bridge-agent &&   ( npm ci || ( npm install --package-lock-only && npm ci ) ) &&   npx next build &&   npm prune --omit=dev )
+          sudo -u vibe env HOME=/home/vibe bash -lc '
+            set -euo pipefail;
+            cd /srv/vibe/bridge-agent && \
+            ( npm ci || ( npm install --package-lock-only && npm ci ) ) && \
+            npx next build && \
+            npm prune --omit=dev
+          '
       - name: Install deps (prod)
         run: |
           set -euxo pipefail
