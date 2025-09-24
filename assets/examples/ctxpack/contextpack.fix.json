@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "meta": {
+    "project": "demo",
+    "branch": "hotfix/x",
+    "commit": "deadbeef",
+    "generatedAt": "2025-09-24T21:59:46.010468Z"
+  },
+  "sections": [
+    {
+      "name": "templates",
+      "items": [
+        {
+          "id": "prompt/base",
+          "content": "You are a precise agent."
+        }
+      ]
+    },
+    {
+      "name": "spec_canvas",
+      "items": [
+        {
+          "id": "doc/spec",
+          "content": "..."
+        }
+      ]
+    },
+    {
+      "name": "diff_slices",
+      "items": [
+        {
+          "id": "file/lib/x.mjs#L10-40",
+          "content": "diff..."
+        }
+      ]
+    },
+    {
+      "name": "linked_tests",
+      "items": [
+        {
+          "id": "tests/a.test.mjs",
+          "content": "..."
+        }
+      ]
+    },
+    {
+      "name": "contracts",
+      "items": [
+        {
+          "id": "http/orchestrator",
+          "content": "..."
+        }
+      ]
+    },
+    {
+      "name": "extras",
+      "items": [
+        {
+          "id": "notes/context",
+          "content": "..."
+        }
+      ]
+    }
+  ]
+}
