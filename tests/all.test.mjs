@@ -1,49 +1,30 @@
 // tests/all.test.mjs
-// Deterministic aggregator. Runs each *.test.mjs as its own subtest.
-// Benefits:
-// - ESM import/parse errors are attributed to the specific file subtest.
-// - Any late async failure from that file is labeled with the file path.
-// Node will execute ONLY this file (see package.json "test" script).
+// Aggregator that ensures all tests execute, with mocha-like globals shim.
+import "./_globals.mjs";
 
-import test from "node:test";
-import { readdir } from "node:fs/promises";
+import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL, fileURLToPath } from "node:url";
+import url from "node:url";
 
-const TEST_ROOT = path.dirname(fileURLToPath(import.meta.url));
-
-async function *walk(dir) {
-  const ents = await readdir(dir, { withFileTypes: true });
-  for (const ent of ents) {
-    if (ent.name.startsWith("harness")) continue;     // skip harness
-    const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) {
-      yield *walk(p);
-    } else {
-      yield p;
-    }
-  }
-}
-
-function rel(p) {
-  return p.replace(TEST_ROOT + path.sep, "").split(path.sep).join("/");
-}
+const rootDir = path.resolve(process.cwd(), "tests");
+const re = /\.(test|spec)\.(mjs|js)$/;
 
 const files = [];
-for await (const p of walk(TEST_ROOT)) {
-  if (p.endsWith(".test.mjs") && !p.endsWith("all.test.mjs")) files.push(p);
+function walk(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, ent.name);
+    if (ent.isDirectory()) { walk(p); continue; }
+    const base = path.basename(p);
+    if (base.startsWith("_")) continue;
+    if (!re.test(base)) continue;
+    files.push(p);
+  }
 }
-files.sort();
+walk(rootDir);
+files.sort((a,b) => a.localeCompare(b));
 
-for (const p of files) {
-  const name = rel(p);
-  await test(name, async (t) => {
-    const url = pathToFileURL(p);
-    try {
-      await import(url.href);
-    } catch (e) {
-      e.message += ` [while importing ${name}]`;
-      throw e;
-    }
-  });
+for (const f of files) {
+  if (path.resolve(f) === path.resolve(import.meta.filename)) continue;
+  await import(url.pathToFileURL(f).href);
 }
