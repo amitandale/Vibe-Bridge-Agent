@@ -7,6 +7,7 @@ import path from 'node:path';
 test('budgets upsert round-trip', async () => {
   const tmp = path.join(process.cwd(), '.tmp-home-store-1');
   process.env.HOME = tmp;
+  await rm(tmp, { recursive: true, force: true });
   await mkdir(path.join(tmp, '.vibe', 'billing'), { recursive: true });
   const b = await upsertBudget({ scope:'project', scopeId:'p1', hardUsd:10, softUsd:5, period:'month' });
   assert.equal(b.id, 'project:p1:month');
@@ -18,6 +19,7 @@ test('budgets upsert round-trip', async () => {
 test('usage idempotent by callId', async () => {
   const tmp = path.join(process.cwd(), '.tmp-home-store-2');
   process.env.HOME = tmp;
+  await rm(tmp, { recursive: true, force: true });
   await mkdir(path.join(tmp, '.vibe', 'billing'), { recursive: true });
   const ev = { callId:'abc', provider:'perplexity', model:'pplx-7b-chat', inputTokens:100, outputTokens:20, costUsd:0.05, prId:'1' };
   const r1 = await recordUsage(ev);
