@@ -149,5 +149,13 @@ jobs:
           sudo systemctl --no-pager --full status "$SERVICE" || true
       - name: Health check
         run: |
-          set -euxo pipefail
-          curl -sSf "http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/api/billing/prices" >/dev/null
+          set -euo pipefail
+          URL="http://127.0.0.1:${{ vars.ORCH_PORT || 3002 }}/api/health"
+          echo "Probing ${URL}"
+          for i in $(seq 1 30); do
+            if curl -fsS "$URL" >/dev/null; then echo OK; exit 0; fi
+            sleep 1
+          done
+          echo "Service not responding"
+          curl -v "$URL"
+          exit 1
