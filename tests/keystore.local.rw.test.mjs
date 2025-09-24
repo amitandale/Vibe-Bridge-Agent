@@ -15,7 +15,7 @@ test('keystore set/get/rotate', async () => {
   assert.equal(rec.baseUrl, 'https://api.perplexity.ai');
   // rotate with different passphrase
   process.env.VIBE_KEYSTORE_PASS = 'new-pass';
-  await rotate();
+  await rotate('test-pass','new-pass');
   const rec2 = await getKey('perplexity');
   assert.equal(rec2.apiKey, 'pplx-key');
 });
