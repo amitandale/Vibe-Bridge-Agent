@@ -1,4 +1,4 @@
-export default { reactStrictMode: true 
+export default { reactStrictMode: true,
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
 };
