@@ -1,10 +1,34 @@
 {
-  "version": 1,
-  "meta": {
-    "project": "demo",
-    "branch": "hotfix/x",
-    "commit": "deadbeef",
-    "generatedAt": "2025-09-24T21:59:46.010468Z"
+  "version": "1.0.0",
+  "project": {
+    "id": "demo"
+  },
+  "pr": {
+    "id": "42",
+    "branch": "work",
+    "commit_sha": "deadbeefcafe"
+  },
+  "mode": "FIX",
+  "order": [
+    "templates",
+    "spec_canvas",
+    "diff_slices",
+    "linked_tests",
+    "contracts",
+    "extras"
+  ],
+  "budgets": {
+    "max_tokens": 20000,
+    "max_files": 200,
+    "max_per_file_tokens": 8000,
+    "section_caps": {
+      "templates": 5,
+      "spec_canvas": 2,
+      "diff_slices": 80,
+      "linked_tests": 20,
+      "contracts": 10,
+      "extras": 20
+    }
   },
   "sections": [
     {
@@ -12,7 +36,7 @@
       "items": [
         {
           "id": "prompt/base",
-          "content": "You are a precise agent."
+          "content": "You are precise."
         }
       ]
     },
@@ -29,7 +53,7 @@
       "name": "diff_slices",
       "items": [
         {
-          "id": "file/lib/x.mjs#L10-40",
+          "id": "lib/x.mjs#L10-40",
           "content": "diff..."
         }
       ]
@@ -61,5 +85,30 @@
         }
       ]
     }
-  ]
+  ],
+  "must_include": [
+    {
+      "kind": "file",
+      "section": "diff_slices",
+      "loc": {
+        "path": "lib/x.mjs",
+        "start_line": 10,
+        "end_line": 40
+      },
+      "sha256": "6f04e4280f07867b2e22fd03bf463b81eddff74d1883e4006ace7d4666392d79",
+      "source": "planner"
+    }
+  ],
+  "nice_to_have": [],
+  "never_include": [
+    "**/*.min.js"
+  ],
+  "provenance": [
+    {
+      "source": "planner",
+      "generator": "ba/ctxpack",
+      "created_at": "2025-09-24T22:09:48.301191Z"
+    }
+  ],
+  "hash": "76b023f4e173e8f581fc2df5a2f3bf1353d3e15ebcada03cdb7cc255c3b9c237"
 }
