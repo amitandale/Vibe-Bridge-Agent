@@ -1,30 +1,49 @@
 // tests/all.test.mjs
-// Aggregator that ensures all tests execute, with mocha-like globals shim.
-import "./_globals.mjs";
+// Deterministic aggregator. Runs each *.test.mjs as its own subtest.
+// Benefits:
+// - ESM import/parse errors are attributed to the specific file subtest.
+// - Any late async failure from that file is labeled with the file path.
+// Node will execute ONLY this file (see package.json "test" script).
 
-import fs from "node:fs";
+import test from "node:test";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
-import url from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
-const rootDir = path.resolve(process.cwd(), "tests");
-const re = /\.(test|spec)\.(mjs|js)$/;
+const TEST_ROOT = path.dirname(fileURLToPath(import.meta.url));
 
-const files = [];
-function walk(dir) {
-  if (!fs.existsSync(dir)) return;
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+async function *walk(dir) {
+  const ents = await readdir(dir, { withFileTypes: true });
+  for (const ent of ents) {
+    if (ent.name.startsWith("harness")) continue;     // skip harness
     const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) { walk(p); continue; }
-    const base = path.basename(p);
-    if (base.startsWith("_")) continue;
-    if (!re.test(base)) continue;
-    files.push(p);
+    if (ent.isDirectory()) {
+      yield *walk(p);
+    } else {
+      yield p;
+    }
   }
 }
-walk(rootDir);
-files.sort((a,b) => a.localeCompare(b));
 
-for (const f of files) {
-  if (path.resolve(f) === path.resolve(import.meta.filename)) continue;
-  await import(url.pathToFileURL(f).href);
+function rel(p) {
+  return p.replace(TEST_ROOT + path.sep, "").split(path.sep).join("/");
+}
+
+const files = [];
+for await (const p of walk(TEST_ROOT)) {
+  if (p.endsWith(".test.mjs") && !p.endsWith("all.test.mjs")) files.push(p);
+}
+files.sort();
+
+for (const p of files) {
+  const name = rel(p);
+  await test(name, async (t) => {
+    const url = pathToFileURL(p);
+    try {
+      await import(url.href);
+    } catch (e) {
+      e.message += ` [while importing ${name}]`;
+      throw e;
+    }
+  });
 }
