@@ -75,10 +75,16 @@ async function main(){
   const val = validateObject(pack);
   const essentialsOk = (inputs.mode === 'PR' || inputs.mode === 'FIX') ? (Array.isArray(pack.must_include) && pack.must_include.length > 0) : true;
 
-  // validate and enforce essentials
+  if (a.cmd !== 'dry-run') {
   try { validateObject(pack, { strictOrder: true }); } catch (e) { console.error('validate:', e.code || e.message); process.exit(3); }
   try { gate(pack, { mode: 'enforce' }); } catch (e) { console.error('gate:', e.code || e.message); process.exit(4); }
   if ((inputs.mode === 'PR' || inputs.mode === 'FIX') && (!pack.must_include || pack.must_include.length === 0)) { console.error('essentials: must_include empty'); process.exit(5); }
+
+
+  }
+
+
+
   if (a.cmd === 'dry-run') {
     const counts = Object.fromEntries(pack.sections.map(s=>[s.name, s.items.length]));
     const out = { ok: essentialsOk && val.ok, sections: counts, omissions: (report && report.omissions) ? report.omissions : [] };
