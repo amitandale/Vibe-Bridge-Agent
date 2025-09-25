@@ -61,12 +61,6 @@ async function main(){
   if (a.templates) {
     try { const raw = await fs.readFile(a.templates, 'utf8'); templatesRegistry = JSON.parse(raw); } catch {}
   }
-
-
-let templatesRegistry;
-if (a.templates) {
-  try { templatesRegistry = JSON.parse(await fs.readFile(a.templates,'utf8')); } catch {}
-}
 let failingTests = [];
 if (a.failingTests) {
   try { failingTests = JSON.parse(await fs.readFile(a.failingTests,'utf8')); } catch {}
