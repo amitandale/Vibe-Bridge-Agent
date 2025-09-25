@@ -19,7 +19,11 @@ test('planner --failing-tests influences linked_tests', async () => {
   const ftPath = join(dir, 'failing.json');
   writeFileSync(ftPath, JSON.stringify([{ path: 'tests/util.test.mjs' }]));
   const diffPath = join(dir, 'd.diff');
-  writeFileSync(diffPath, 'diff --git a/lib/core/util.mjs b/lib/core/util.mjs\n+export const z=1;\n');
+  writeFileSync(diffPath, 'diff --git a/lib/core/util.mjs b/lib/core/util.mjs\n'
+                        + '--- a/lib/core/util.mjs\n'
+                        + '+++ b/lib/core/util.mjs\n'
+                        + '@@ -0,0 +1 @@\n'
+                        + '+export const z=1;\n');
   const { stdout } = await execFileP('node', [
     'scripts/planner.mjs','build','--pr','1','--commit','deadbeef',
     '--mode','PR','--diff',diffPath,'--failing-tests',ftPath
