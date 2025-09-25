@@ -40,7 +40,11 @@ function parseArgs(argv){
 
 async function main(){
   const a = parseArgs(process.argv);
-  if (!a.cmd || !a.pr || !a.commit) {
+  if (!a.cmd) {
+    console.error('Usage: node scripts/planner.mjs <build|dry-run> [flags]');
+    process.exit(2);
+  }
+  if (a.cmd === 'build' && (!a.pr || !a.commit)) {
     console.error('Usage: node scripts/planner.mjs build --pr <id> --commit <sha> [--branch work] [--mode PR] [--labels a,b] [--diff path] [--out pack.json]');
     process.exit(2);
   }
