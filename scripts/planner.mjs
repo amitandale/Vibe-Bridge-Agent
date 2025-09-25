@@ -50,19 +50,31 @@ async function main(){
   };
   const report = planFromSignals(inputs);
   const pack = planPR(inputs);
+  const val = validateObject(pack);
+  const essentialsOk = (inputs.mode === 'PR' || inputs.mode === 'FIX') ? (Array.isArray(pack.must_include) && pack.must_include.length > 0) : true;
+
   // validate and enforce essentials
   try { validateObject(pack, { strictOrder: true }); } catch (e) { console.error('validate:', e.code || e.message); process.exit(3); }
   try { gate(pack, { mode: 'enforce' }); } catch (e) { console.error('gate:', e.code || e.message); process.exit(4); }
   if ((inputs.mode === 'PR' || inputs.mode === 'FIX') && (!pack.must_include || pack.must_include.length === 0)) { console.error('essentials: must_include empty'); process.exit(5); }
   if (a.cmd === 'dry-run') {
     const counts = Object.fromEntries(pack.sections.map(s=>[s.name, s.items.length]));
-    const out = { ok: true, sections: counts, omissions: report.omissions || [] };
+    const out = { ok: essentialsOk && val.valid, sections: counts, omissions: report?.omissions || [] };
+    console.log(JSON.stringify(out, null, 2));
+    if (!essentialsOk) { process.exit(3); }
+    if (!val.valid) { process.exit(2); }
+    try { gate(pack, { mode: 'warn' }); } catch {}
+    process.exit(0);
+  };
     console.log(JSON.stringify(out, null, 2));
     process.exit(0);
-  } else {
+  }
+  else {
+    if (!essentialsOk) { console.error('essentials: must_include empty'); process.exit(5); }
+    if (!val.valid) { console.error('invalid pack'); process.exit(2); }
+    try { gate(pack, { mode: 'enforce' }); } catch (e) { console.error(e?.code || e?.message || 'gate failed'); process.exit(4); }
     const out = JSON.stringify(pack, null, 2);
-    if (a.out) await fs.writeFile(a.out, out);
-    else process.stdout.write(out);
+    if (a.out) await fs.writeFile(a.out, out); else process.stdout.write(out);
     process.exit(0);
   }
 }
