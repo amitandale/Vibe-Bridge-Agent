@@ -65,9 +65,6 @@ async function main(){
     if (!val.valid) { process.exit(2); }
     try { gate(pack, { mode: 'warn' }); } catch {}
     process.exit(0);
-  };
-    console.log(JSON.stringify(out, null, 2));
-    process.exit(0);
   }
   else {
     if (!essentialsOk) { console.error('essentials: must_include empty'); process.exit(5); }
