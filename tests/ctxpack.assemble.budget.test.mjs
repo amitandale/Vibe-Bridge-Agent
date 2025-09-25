@@ -61,7 +61,8 @@ test('dedup: intra- and inter-section duplicates removed', async () => {
   const tItems = manifest.sections.find(s=>s.name==='templates').items;
   assert.equal(tItems.length, 1, 'intra-section duplicate removed');
   const extras = manifest.sections.find(s=>s.name==='extras').items;
-  assert.equal(extras.length, 0, 'inter-section duplicate dropped from later section');
+  assert.equal(extras.length, 1, 'later section keeps a pointer for duplicate content');
+  assert.equal(extras[0].pointer, true)
 });
 
 test('eviction: over cap keeps closer-to-diff then shorter', async () => {
