@@ -17,6 +17,8 @@ function parseArgs(argv){
     if (a==='--labels') { args.labels = argv[++i].split(',').filter(Boolean); continue; }
     if (a==='--diff') { args.diffPath = argv[++i]; continue; }
     if (a==='--out') { args.out = argv[++i]; continue; }
+    if (a==='--files') { args.files = argv[++i]; continue; }
+    if (a==='--templates') { args.templates = argv[++i]; continue; }
   }
   return args;
 }
@@ -28,13 +30,23 @@ async function main(){
     process.exit(2);
   }
   const diff = a.diffPath ? await fs.readFile(a.diffPath,'utf8') : '';
+  let fileContents = {};
+  if (a.files) {
+    try { const raw = await fs.readFile(a.files, 'utf8'); fileContents = JSON.parse(raw); } catch {}
+  }
+  let templatesRegistry = undefined;
+  if (a.templates) {
+    try { const raw = await fs.readFile(a.templates, 'utf8'); templatesRegistry = JSON.parse(raw); } catch {}
+  }
+
   const inputs = {
     projectId: process.env.PROJECT_ID || 'unknown',
     pr: { id: a.pr, branch: a.branch || process.env.GIT_BRANCH || 'work', commit_sha: a.commit },
     mode: a.mode,
     labels: a.labels,
     diff,
-    fileContents: {},
+    fileContents,
+    templatesRegistry,
   };
   const report = planFromSignals(inputs);
   const pack = planPR(inputs);
