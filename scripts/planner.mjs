@@ -34,6 +34,7 @@ function parseArgs(argv){
     if (a==='--out') { args.out = argv[++i]; continue; }
     if (a==='--files') { args.files = argv[++i]; continue; }
     if (a==='--templates') { args.templates = argv[++i]; continue; }
+    if (a==='--failing-tests') { args.failingTests = argv[++i]; continue; }
   }
   return args;
 }
@@ -61,11 +62,22 @@ async function main(){
     try { const raw = await fs.readFile(a.templates, 'utf8'); templatesRegistry = JSON.parse(raw); } catch {}
   }
 
+
+let templatesRegistry;
+if (a.templates) {
+  try { templatesRegistry = JSON.parse(await fs.readFile(a.templates,'utf8')); } catch {}
+}
+let failingTests = [];
+if (a.failingTests) {
+  try { failingTests = JSON.parse(await fs.readFile(a.failingTests,'utf8')); } catch {}
+}
+
   const inputs = {
     projectId: process.env.PROJECT_ID || 'unknown',
     pr: { id: a.pr, branch: a.branch || process.env.GIT_BRANCH || 'work', commit_sha: a.commit },
     mode: a.mode,
     labels: a.labels,
+    failingTests,
     diff,
     fileContents,
     templatesRegistry,

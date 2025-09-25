@@ -1,16 +1,101 @@
 {
-  "labels": [
-    "api"
-  ],
-  "diff": "diff --git a/lib/x.mjs b/lib/x.mjs\\n--- a/lib/x.mjs\\n+++ b/lib/x.mjs\\n@@ -0,0 +1,1 @@\\n+export function add(a,b){return a+b}\\n",
-  "fileContents": {
-    "lib/x.mjs": "export function add(a,b){return a+b}\\n"
+  "version": "1.0.0",
+  "project": {
+    "id": "demo"
   },
   "pr": {
-    "id": "7",
+    "id": "123",
     "branch": "work",
-    "commit_sha": "deadbee"
+    "commit_sha": "deadbeef"
   },
   "mode": "PR",
-  "projectId": "demo"
+  "order": [
+    "templates",
+    "spec_canvas",
+    "diff_slices",
+    "linked_tests",
+    "contracts",
+    "extras"
+  ],
+  "budgets": {
+    "max_tokens": 8000,
+    "max_files": 64,
+    "max_per_file_tokens": 2000,
+    "section_caps": {
+      "templates": 8,
+      "spec_canvas": 2,
+      "diff_slices": 48,
+      "linked_tests": 16,
+      "contracts": 16,
+      "extras": 16
+    }
+  },
+  "sections": [
+    {
+      "name": "templates",
+      "items": [
+        {
+          "id": "api_guidelines",
+          "path": "templates/api_guidelines.md",
+          "content": "",
+          "sha256": "4389ab606395d67a28a276e08eab96497c8d2de0561ce2e86e49795ce69a6d27"
+        }
+      ]
+    },
+    {
+      "name": "spec_canvas",
+      "items": []
+    },
+    {
+      "name": "diff_slices",
+      "items": [
+        {
+          "id": "app/api/hello.mjs#L1",
+          "path": "app/api/hello.mjs",
+          "content": "",
+          "sha256": "26a1b71ee1441484049af67ec0508dc29cfe9126c6c37f093c923c76e7e4b256"
+        }
+      ]
+    },
+    {
+      "name": "linked_tests",
+      "items": [
+        {
+          "id": "tests/hello.test.mjs",
+          "path": "tests/hello.test.mjs",
+          "content": "",
+          "sha256": "545c93d740a279b74718c5f2ef55cee16eac155ac368d597d5d7f5dfd089bb97"
+        }
+      ]
+    },
+    {
+      "name": "contracts",
+      "items": []
+    },
+    {
+      "name": "extras",
+      "items": []
+    }
+  ],
+  "must_include": [
+    {
+      "kind": "symbol",
+      "section": "diff_slices",
+      "loc": {
+        "path": "app/api/hello.mjs",
+        "start_line": 1
+      },
+      "sha256": "26a1b71ee1441484049af67ec0508dc29cfe9126c6c37f093c923c76e7e4b256",
+      "source": "fs"
+    }
+  ],
+  "nice_to_have": [],
+  "never_include": [],
+  "provenance": [
+    {
+      "source": "planner",
+      "generator": "ba/planner",
+      "created_at": "1970-01-01T00:00:00.000Z"
+    }
+  ]
 }
