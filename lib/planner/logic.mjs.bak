@@ -189,16 +189,13 @@ function neighborsFromImports(touchedFiles = [], fileContents = {}, maxHops = 1)
   return Array.from(extras).sort();
 }
 function placeSections({ touchedFiles, labels, failingTests=[], templatesRegistry } = {}) {
-  // Safe fallback to avoid ReferenceError if neighborItems is out of scope
-  const extrasItems = (typeof neighborItems !== 'undefined' && Array.isArray(neighborItems)) ? neighborItems : [];
-
   const sections = [
     { name:'templates', items: selectTemplates(labels, templatesRegistry) },
     { name:'spec_canvas', items: [] },
     { name:'diff_slices', items: [] },
     { name:'linked_tests', items: linkTests(touchedFiles, failingTests) },
     { name:'contracts', items: [] },
-    { name:'extras', items: [] },
+    { name:'extras', items: [...neighborItems] },
   ];
   return sections;
 }
@@ -247,7 +244,7 @@ export function planFromSignals({ labels=[], diff='', fileContents = {}, failing
 
   // Add rename provenance if any
   for (const r of renamed) {
-    provenance.push({ source:'git', generator:'ba/planner', created_at:new Date().toISOString(), old_path:r.from || undefined, new_path:r.to || undefined });
+    provenance.push({ source:'git', generator:'ba/planner', created_at: createdAt, old_path:r.from || undefined, new_path:r.to || undefined });
   }
 
   // Collect items for diff_slices or contracts if migrations
