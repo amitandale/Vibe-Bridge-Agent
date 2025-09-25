@@ -68,7 +68,7 @@ async function main(){
   };
   const report = planFromSignals(inputs);
   const pack = planPR(inputs);
-  let val; try { validateObject(pack); val = { ok: true }; } catch { val = { ok: false }; }
+  const val = validateObject(pack);
   const essentialsOk = (inputs.mode === 'PR' || inputs.mode === 'FIX') ? (Array.isArray(pack.must_include) && pack.must_include.length > 0) : true;
 
   // validate and enforce essentials
