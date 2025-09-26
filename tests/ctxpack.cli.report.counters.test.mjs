@@ -19,7 +19,7 @@ function run(args, env={}) {
   });
 }
 
-test('cli report contains explicit counters', async () => {
+test('cli report contains explicit counters', { timeout: 20000 }, async () => {
   const report = path.join(repoRoot, 'assets', 'examples', 'ctxpack', 'tmp.cli.counters.report.json');
   try { await fs.rm(report, { force: true }); } catch {}
   const r = run(['assemble', '--model', 'default', '--in', INPUT, '--dry-run', '--report', report]);
@@ -30,9 +30,9 @@ test('cli report contains explicit counters', async () => {
   assert.equal(typeof obj.ctxpack_files_total, 'number');
   assert.equal(typeof obj.ctxpack_evictions_total, 'number');
   assert.equal(typeof obj.ctxpack_dedup_pointers_total, 'number');
-}).timeout(15000);
+})
 
-test('determinism mismatch emits structured JSON when exit=4', () => {
+test('determinism mismatch emits structured JSON when exit=4', { timeout: 15000 }, () => {
   // Cannot force mismatch reliably; validate shape only when it happens.
   const r = run(['assemble', '--model', 'default', '--in', INPUT, '--dry-run'], { CTX_DETERMINISM_CHECK: '1', __FORCE_HASH_SALT: 'x' });
   if (r.status === 4) {
@@ -45,4 +45,4 @@ test('determinism mismatch emits structured JSON when exit=4', () => {
   } else {
     assert.ok([0].includes(r.status));
   }
-}).timeout(15000);
+})

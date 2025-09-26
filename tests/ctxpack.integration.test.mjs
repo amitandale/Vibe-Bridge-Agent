@@ -13,7 +13,7 @@ const REPORT = path.join(repoRoot, 'assets', 'examples', 'ctxpack', 'tmp.integra
 
 async function readJson(p){ const t = await fs.readFile(p, 'utf8'); return JSON.parse(t); }
 
-test('integration: assembleAndPersist writes manifest and report (when reportPath provided)', async () => {
+test('integration: assembleAndPersist writes manifest and report (when reportPath provided)', { timeout: 20000 }, async () => {
   const mod = await import('../lib/ctxpack/integration.mjs');
   const raw = await fs.readFile(INPUT, 'utf8');
   const pack = JSON.parse(raw);
@@ -30,9 +30,9 @@ test('integration: assembleAndPersist writes manifest and report (when reportPat
   assert.equal(typeof report.ctxpack_files_total, 'number');
   assert.equal(typeof report.ctxpack_evictions_total, 'number');
   assert.equal(typeof report.ctxpack_dedup_pointers_total, 'number');
-}).timeout(20000);
+})
 
-test('integration: maybeAssembleWithFlag respects dry-run default', async () => {
+test('integration: maybeAssembleWithFlag respects dry-run default', { timeout: 20000 }, async () => {
   const mod = await import('../lib/ctxpack/integration.mjs');
   const raw = await fs.readFile(INPUT, 'utf8');
   const pack = JSON.parse(raw);
@@ -40,9 +40,9 @@ test('integration: maybeAssembleWithFlag respects dry-run default', async () => 
   // default CTX_ASSEMBLE_DRYRUN=1 in helper should mark dry-run true
   assert.equal(typeof res.ok, 'boolean');
   assert.equal(res.dry, true);
-}).timeout(15000);
+})
 
-test('integration: maybeAssembleWithFlag enforce when enabled', async () => {
+test('integration: maybeAssembleWithFlag enforce when enabled', { timeout: 20000 }, async () => {
   const mod = await import('../lib/ctxpack/integration.mjs');
   const raw = await fs.readFile(INPUT, 'utf8');
   const pack = JSON.parse(raw);
@@ -58,4 +58,4 @@ test('integration: maybeAssembleWithFlag enforce when enabled', async () => {
     if (envEnabled === undefined) delete process.env.CTX_ASSEMBLE_ENABLED; else process.env.CTX_ASSEMBLE_ENABLED = envEnabled;
     if (envDry === undefined) delete process.env.CTX_ASSEMBLE_DRYRUN; else process.env.CTX_ASSEMBLE_DRYRUN = envDry;
   }
-}).timeout(20000);
+})
