@@ -105,7 +105,7 @@ function humanSummary(manifest) {
 }
 
 async function cmdAssemble(flags) {
-  const infile = flags.in || flags._[1]; // backward compat with old usage: assemble <file>
+  const infile = flags.in || flags._[0]; // backward compat with old usage: assemble <file>
   if (!infile) {
     showUsage();
     process.exit(2);
