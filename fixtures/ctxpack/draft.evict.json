@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "id": "demo"
+  },
+  "pr": {
+    "id": "1",
+    "branch": "work",
+    "commit_sha": "deadbeef"
+  },
+  "mode": "PR",
+  "order": [
+    "templates",
+    "spec_canvas",
+    "diff_slices",
+    "linked_tests",
+    "contracts",
+    "extras"
+  ],
+  "budgets": {
+    "max_tokens": 10000,
+    "max_files": 1,
+    "max_per_file_tokens": 1000,
+    "section_caps": {
+      "templates": 1,
+      "spec_canvas": 0,
+      "diff_slices": 0,
+      "linked_tests": 0,
+      "contracts": 0,
+      "extras": 0
+    }
+  },
+  "sections": [
+    {
+      "name": "templates",
+      "items": [
+        {
+          "id": "near.txt",
+          "content": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "distance_to_diff": 1
+        },
+        {
+          "id": "far.txt",
+          "content": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "distance_to_diff": 1000
+        }
+      ]
+    },
+    {
+      "name": "spec_canvas",
+      "items": []
+    },
+    {
+      "name": "diff_slices",
+      "items": []
+    },
+    {
+      "name": "linked_tests",
+      "items": []
+    },
+    {
+      "name": "contracts",
+      "items": []
+    },
+    {
+      "name": "extras",
+      "items": []
+    }
+  ],
+  "must_include": [],
+  "nice_to_have": [],
+  "never_include": [],
+  "provenance": [],
+  "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}

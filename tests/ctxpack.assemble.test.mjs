@@ -43,3 +43,27 @@ test('assemble: output has deterministic hash for identical input', async () => 
   assert.equal(m1.hash, m2.hash);
   assert.deepEqual(m1.sections, m2.sections);
 });
+
+
+test('assemble: emits pointers for cross-section duplicates', async () => {
+  const pack = await load('assets/examples/ctxpack/contextpack.mvp.json');
+  // Duplicate one item from templates into extras with a different id
+  const tpl = pack.sections.find(s=>s.name==='templates').items[0];
+  pack.sections.find(s=>s.name==='extras').items.push({ id: tpl.id + ':dup', content: tpl.content });
+  const c = structuredClone(pack); delete c.hash; pack.hash = sha256Canonical(c);
+  const { manifest } = await assemble(pack);
+  const ptr = manifest.pointers.find(p => p.from_id === tpl.id + ':dup');
+  assert.ok(ptr && ptr.to_id === tpl.id);
+});
+
+test('assemble: spans are merged to text and counted in metrics', async () => {
+  const pack = await load('assets/examples/ctxpack/contextpack.mvp.json');
+  // Replace first template item with spans
+  const tplSec = pack.sections.find(s=>s.name==='templates');
+  tplSec.items[0] = { id:'span.txt', spans:[{text:'AAA'},{text:'BBB'}] };
+  const c = structuredClone(pack); delete c.hash; pack.hash = sha256Canonical(c);
+  const { manifest } = await assemble(pack);
+  const txt = manifest.sections.find(s=>s.name==='templates').items[0].text;
+  assert.equal(txt, 'AAA\nBBB');
+  assert.ok(manifest.metrics.merged_spans >= 1);
+});

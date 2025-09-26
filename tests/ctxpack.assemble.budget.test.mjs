@@ -119,3 +119,31 @@ test('non-droppable: must_include in sections 1–5 triggers hard fail if it can
     assert.equal(e.code, 'BUDGET_ERROR');
   }
 });
+
+
+test('per-section cap: templates cap limits files placed', async () => {
+  const pack = {
+    version: '1.0.0',
+    project: { id: 'demo' },
+    pr: { id: '1', branch: 'work', commit_sha: 'deadbeef' },
+    mode: 'PR',
+    order: ['templates','spec_canvas','diff_slices','linked_tests','contracts','extras'],
+    budgets: { max_tokens: 10000, max_files: 10, max_per_file_tokens: 1000, section_caps:{templates:1,spec_canvas:5,diff_slices:5,linked_tests:5,contracts:5,extras:5} },
+    sections: [
+      { name:'templates', items: [
+        { id:'t1.txt', content: 'A'.repeat(20), distance_to_diff: 10 },
+        { id:'t2.txt', content: 'B'.repeat(10), distance_to_diff: 1 }
+      ] },
+      { name:'spec_canvas', items: [] },
+      { name:'diff_slices', items: [] },
+      { name:'linked_tests', items: [] },
+      { name:'contracts', items: [] },
+      { name:'extras', items: [] },
+    ],
+    must_include: [], nice_to_have: [], never_include: [], provenance: [], hash: '0'.repeat(64)
+  };
+  reseal(pack);
+  const { manifest } = await assemble(pack);
+  const ids = manifest.sections.find(s=>s.name==='templates').items.map(i=>i.id);
+  assert.equal(ids.length, 1);
+});

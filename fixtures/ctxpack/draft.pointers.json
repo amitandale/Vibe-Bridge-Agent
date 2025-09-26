@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "id": "demo"
+  },
+  "pr": {
+    "id": "1",
+    "branch": "work",
+    "commit_sha": "deadbeef"
+  },
+  "mode": "PR",
+  "order": [
+    "templates",
+    "spec_canvas",
+    "diff_slices",
+    "linked_tests",
+    "contracts",
+    "extras"
+  ],
+  "budgets": {
+    "max_tokens": 10000,
+    "max_files": 10,
+    "max_per_file_tokens": 1000,
+    "section_caps": {
+      "templates": 5,
+      "spec_canvas": 5,
+      "diff_slices": 5,
+      "linked_tests": 5,
+      "contracts": 5,
+      "extras": 5
+    }
+  },
+  "sections": [
+    {
+      "name": "templates",
+      "items": [
+        {
+          "id": "dup.txt",
+          "content": "SAME"
+        }
+      ]
+    },
+    {
+      "name": "spec_canvas",
+      "items": []
+    },
+    {
+      "name": "diff_slices",
+      "items": []
+    },
+    {
+      "name": "linked_tests",
+      "items": []
+    },
+    {
+      "name": "contracts",
+      "items": []
+    },
+    {
+      "name": "extras",
+      "items": [
+        {
+          "id": "dup2.txt",
+          "content": "SAME"
+        }
+      ]
+    }
+  ],
+  "must_include": [],
+  "nice_to_have": [],
+  "never_include": [],
+  "provenance": [],
+  "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}
