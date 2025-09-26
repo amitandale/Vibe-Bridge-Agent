@@ -1,8 +1,14 @@
 {
-  "version": "ctxpack.draft",
-  "project": "demo",
-  "pr": 1,
-  "mode": "mvp",
+  "version": "1.0.0",
+  "project": {
+    "id": "demo"
+  },
+  "pr": {
+    "id": "1",
+    "branch": "work",
+    "commit_sha": "abcdef1"
+  },
+  "mode": "MVP",
   "order": [
     "templates",
     "spec_canvas",
@@ -16,30 +22,12 @@
     "max_files": 1000,
     "max_per_file_tokens": 10000000,
     "section_caps": {
-      "templates": {
-        "max_tokens": 10000000,
-        "max_files": 1000
-      },
-      "spec_canvas": {
-        "max_tokens": 10000000,
-        "max_files": 1000
-      },
-      "diff_slices": {
-        "max_tokens": 10000000,
-        "max_files": 1000
-      },
-      "linked_tests": {
-        "max_tokens": 10000000,
-        "max_files": 1000
-      },
-      "contracts": {
-        "max_tokens": 10000000,
-        "max_files": 1000
-      },
-      "extras": {
-        "max_tokens": 10000000,
-        "max_files": 1000
-      }
+      "templates": 1000,
+      "spec_canvas": 1000,
+      "diff_slices": 1000,
+      "linked_tests": 1000,
+      "contracts": 1000,
+      "extras": 1000
     }
   },
   "must_include": [],
