@@ -1,0 +1,29 @@
+{
+  "version": "ctxpack.v1",
+  "project": "demo",
+  "pr": "fix",
+  "mode": "FIX",
+  "order": [
+    "templates",
+    "spec_canvas",
+    "diff_slices",
+    "linked_tests",
+    "contracts",
+    "extras"
+  ],
+  "budgets": {
+    "max_tokens": 2000,
+    "max_files": 50,
+    "max_per_file_tokens": 500,
+    "section_caps": {}
+  },
+  "must_include": [],
+  "nice_to_have": [],
+  "never_include": [],
+  "templates": [],
+  "spec_canvas": [],
+  "diff_slices": [],
+  "linked_tests": [],
+  "contracts": [],
+  "extras": []
+}

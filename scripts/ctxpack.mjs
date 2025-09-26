@@ -212,6 +212,11 @@ async function cmdAssemble(flags) {
       now_utc: new Date().toISOString(),
       ok: true,
       warnings: [],
+      // counters for external scraping
+      ctxpack_tokens_total: manifest?.metrics?.tokens_total ?? 0,
+      ctxpack_files_total: manifest?.metrics?.files_total ?? 0,
+      ctxpack_evictions_total: (manifest?.evictions || []).length,
+      ctxpack_dedup_pointers_total: (manifest?.pointers || []).length,
     };
     await fs.mkdir(path.dirname(reportPath), { recursive: true }).catch(()=>{});
     await fs.writeFile(reportPath, JSON.stringify(report, null, 2), 'utf8');

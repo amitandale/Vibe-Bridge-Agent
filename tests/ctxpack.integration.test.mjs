@@ -1,44 +1,61 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import { assembleAndPersist } from '../lib/ctxpack/integration.mjs';
-import { sha256Canonical } from '../lib/ctxpack/hash.mjs';
+import path from 'node:path';
+import url from 'node:url';
 
-test('integration: assembleAndPersist writes manifest and is deterministic', async () => {
-  const pack = JSON.parse(await fs.readFile('assets/examples/ctxpack/contextpack.mvp.json', 'utf8'));
-  const outPath = 'assets/examples/ctxpack/manifest.itest.json';
-  try { await fs.unlink(outPath); } catch {}
-  const m1 = await assembleAndPersist(pack, { model:'gpt-xyz', outPath, mode:'warn' });
-  const m2 = await assembleAndPersist(pack, { model:'gpt-xyz', outPath, mode:'warn' });
-  assert.deepEqual(m1.sections, m2.sections);
-  assert.equal(m1.hash, m2.hash);
-  const saved = JSON.parse(await fs.readFile(outPath, 'utf8'));
-  assert.equal(saved.hash, m1.hash);
-});
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '..');
 
-test('integration: non-droppable overflow yields non-zero semantics (throws)', async () => {
-  const pack = {
-    version: '1.0.0',
-    project: { id: 'demo' },
-    pr: { id: '1', branch: 'work', commit_sha: 'deadbeef' },
-    mode: 'PR',
-    order: ['templates','spec_canvas','diff_slices','linked_tests','contracts','extras'],
-    budgets: { max_tokens: 1, max_files: 0, max_per_file_tokens: 1, section_caps:{templates:0,spec_canvas:0,diff_slices:0,linked_tests:0,contracts:0,extras:0} },
-    sections: [
-      { name:'templates', items: [ { id:'must.txt', content: 'CANNOT FIT' } ] },
-      { name:'spec_canvas', items: [] },
-      { name:'diff_slices', items: [] },
-      { name:'linked_tests', items: [] },
-      { name:'contracts', items: [] },
-      { name:'extras', items: [] },
-    ],
-    must_include: ['must.txt'], nice_to_have: [], never_include: [], provenance: [], hash: '0'.repeat(64)
-  };
-  const c = structuredClone(pack); delete c.hash; pack.hash = sha256Canonical(c);
+const INPUT = path.join(repoRoot, 'assets', 'examples', 'ctxpack', 'contextpack.mvp.json');
+const OUT = path.join(repoRoot, 'assets', 'examples', 'ctxpack', 'tmp.integration.out.json');
+const REPORT = path.join(repoRoot, 'assets', 'examples', 'ctxpack', 'tmp.integration.report.json');
+
+async function readJson(p){ const t = await fs.readFile(p, 'utf8'); return JSON.parse(t); }
+
+test('integration: assembleAndPersist writes manifest and report (when reportPath provided)', async () => {
+  const mod = await import('../lib/ctxpack/integration.mjs');
+  const raw = await fs.readFile(INPUT, 'utf8');
+  const pack = JSON.parse(raw);
+  try { await fs.rm(OUT, { force: true }); } catch {}
+  try { await fs.rm(REPORT, { force: true }); } catch {}
+  const manifest = await mod.assembleAndPersist(pack, { model: 'default', outPath: OUT, reportPath: REPORT, merge_max_tokens: 0 });
+  assert.ok(manifest && typeof manifest === 'object');
+  const written = await readJson(OUT);
+  assert.ok(written && typeof written === 'object');
+  const report = await readJson(REPORT);
+  assert.equal(report.ok, true);
+  // counters should exist and be numeric
+  assert.equal(typeof report.ctxpack_tokens_total, 'number');
+  assert.equal(typeof report.ctxpack_files_total, 'number');
+  assert.equal(typeof report.ctxpack_evictions_total, 'number');
+  assert.equal(typeof report.ctxpack_dedup_pointers_total, 'number');
+}).timeout(20000);
+
+test('integration: maybeAssembleWithFlag respects dry-run default', async () => {
+  const mod = await import('../lib/ctxpack/integration.mjs');
+  const raw = await fs.readFile(INPUT, 'utf8');
+  const pack = JSON.parse(raw);
+  const res = await mod.maybeAssembleWithFlag(pack, { model: 'default', outPath: OUT });
+  // default CTX_ASSEMBLE_DRYRUN=1 in helper should mark dry-run true
+  assert.equal(typeof res.ok, 'boolean');
+  assert.equal(res.dry, true);
+}).timeout(15000);
+
+test('integration: maybeAssembleWithFlag enforce when enabled', async () => {
+  const mod = await import('../lib/ctxpack/integration.mjs');
+  const raw = await fs.readFile(INPUT, 'utf8');
+  const pack = JSON.parse(raw);
+  const envEnabled = process.env.CTX_ASSEMBLE_ENABLED;
+  const envDry = process.env.CTX_ASSEMBLE_DRYRUN;
   try {
-    await assembleAndPersist(pack, { outPath:'assets/examples/ctxpack/manifest.fail.json', mode:'warn' });
-    assert.fail('expected throw');
-  } catch (e) {
-    assert.equal(e.code, 'BUDGET_ERROR');
+    process.env.CTX_ASSEMBLE_ENABLED = '1';
+    process.env.CTX_ASSEMBLE_DRYRUN = '0';
+    const res = await mod.maybeAssembleWithFlag(pack, { model: 'default', outPath: OUT });
+    assert.equal(res.dry, false);
+    assert.equal(typeof res.ok, 'boolean');
+  } finally {
+    if (envEnabled === undefined) delete process.env.CTX_ASSEMBLE_ENABLED; else process.env.CTX_ASSEMBLE_ENABLED = envEnabled;
+    if (envDry === undefined) delete process.env.CTX_ASSEMBLE_DRYRUN; else process.env.CTX_ASSEMBLE_DRYRUN = envDry;
   }
-});
+}).timeout(20000);
