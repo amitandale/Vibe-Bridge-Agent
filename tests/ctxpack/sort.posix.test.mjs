@@ -55,7 +55,10 @@ test('POSIX path normalization and stable sort are deterministic', { timeout: 15
 
   // First run with original order
   const m1 = await assemble(draft, { model: 'default' });
-  const sec1 = m1.sections.find(s => s.name === 'diff_slices');
+  const getSections = (m) => Array.isArray(m?.sections) ? m.sections : (Array.isArray(m?.manifest?.sections) ? m.manifest.sections : []);
+  const sections1 = getSections(m1);
+  assert.ok(Array.isArray(sections1), 'manifest.sections must be array');
+  const sec1 = sections1.find(s => s?.name === 'diff_slices') ?? { items: [] };
   assert.ok(sec1 && Array.isArray(sec1.items), 'diff_slices present');
   const ids1 = sec1.items.map(x => x.id);
   assert.deepEqual(ids1, expected, 'items are sorted deterministically');
@@ -68,7 +71,9 @@ test('POSIX path normalization and stable sort are deterministic', { timeout: 15
   const clone2 = JSON.parse(JSON.stringify(draft2)); delete clone2.hash; draft2.hash = sha256Canonical(clone2);
 
   const m2 = await assemble(draft2, { model: 'default' });
-  const sec2 = m2.sections.find(s => s.name === 'diff_slices');
+  const sections2 = getSections(m2);
+  assert.ok(Array.isArray(sections2), 'manifest.sections must be array');
+  const sec2 = sections2.find(s => s?.name === 'diff_slices') ?? { items: [] };
   const ids2 = sec2.items.map(x => x.id);
   assert.deepEqual(ids2, expected, 'shuffled inputs still produce same order');
 });
