@@ -226,8 +226,9 @@ async function cmdAssemble(flags) {
   // Persist manifest if requested and not a dry-run
   if (outPath && !dryRun) {
     await fs.mkdir(path.dirname(outPath), { recursive: true }).catch(()=>{});
-    await fs.writeFile(outPath, JSON.stringify(manifest, null, 2), 'utf8');
-  }
+    const toWrite = Array.isArray(manifest?.sections) ? manifest : { ...manifest, sections: [] };
+    await fs.writeFile(outPath, JSON.stringify(toWrite, null, 2), 'utf8');
+}
 
   process.exit(0);
 }
