@@ -89,6 +89,8 @@ function parseSectionCaps(values) {
 }
 
 function humanSummary(manifest) {
+  // legacy human-readable output
+
   const m = manifest?.metrics || {};
   const ev = manifest?.evictions || [];
   const ptr = manifest?.pointers || [];
@@ -103,6 +105,27 @@ function humanSummary(manifest) {
   }
   return lines.join('\n');
 }
+function jsonSummary(manifest) {
+  const m = manifest?.metrics || {};
+  const ev = Array.isArray(manifest?.evictions) ? manifest.evictions : [];
+  const ptr = Array.isArray(manifest?.pointers) ? manifest.pointers : [];
+  const sec = m.per_section || {};
+  const totals = {
+    tokens_total: m.tokens_total ?? 0,
+    files_total: m.files_total ?? 0,
+    evictions: ev.length,
+    pointers: ptr.length,
+    deduped: m.deduped ?? 0,
+    merged_spans: m.merged_spans ?? 0,
+  };
+  const perSection = {};
+  for (const k of Object.keys(sec).sort()) {
+    const s = sec[k] || {};
+    perSection[k] = { tokens: s.tokens ?? 0, files: s.files ?? 0 };
+  }
+  return { totals, perSection };
+}
+
 
 async function cmdAssemble(flags) {
   const infile = flags.in || flags._[0]; // backward compat with old usage: assemble <file>
@@ -165,9 +188,16 @@ async function cmdAssemble(flags) {
     }
   }
 
-  // Human summary
-  const summary = humanSummary(manifest);
-  console.log(summary);
+  // Output selection
+  if (dryRun) {
+    const j = jsonSummary(manifest);
+    console.log(JSON.stringify(j));
+  } else if (outPath) {
+    console.log(outPath);
+  } else {
+    const summary = humanSummary(manifest);
+    console.log(summary);
+  }
 
   // JSON report
   if (reportPath) {
