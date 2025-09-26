@@ -29,7 +29,7 @@ function stableSort(items){
   return [...items].sort((a,b) => {
     const pa = String(a.path || a.id || ''), pb = String(b.path || b.id || '');
     if (pa !== pb) return pa < pb ? -1 : 1;
-    const sa = Number(a.loc?.start_line || 0), sb = Number(b.loc?.start_line || 0);
+    const sa = Number(a.loc?.start_line || a.start_line || 0), sb = Number(b.loc?.start_line || b.start_line || 0);
     if (sa !== sb) return sa - sb;
     const ya = String(a.symbol || ''), yb = String(b.symbol || '');
     if (ya < yb) return -1;
@@ -93,33 +93,9 @@ function priorityScore(it){
  * Assemble a prompt manifest from ContextPack with budget mechanics.
  * Throws CtxpackError('BUDGET_ERROR', ...) if a non-droppable must_include cannot fit.
  */
-
-function __normalizeSections(pack, order) {
-  if (Array.isArray(pack?.sections)) return __SECTIONS;
-  const out = [];
-  for (const name of order) {
-    const arr = Array.isArray(pack?.[name]) ? pack[name] : [];
-    out.push({ name, items: arr });
-  }
-  return out;
-}
-
-function __capOf(sectionCaps, name, key) {
-  const v = sectionCaps && sectionCaps[name];
-  if (!v) return 0;
-  if (typeof v === 'number') return v; // backwards compat
-  if (typeof v === 'object' && v !== null) {
-    const n = v[key];
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
-}
 export async function assemble(pack, { model='default', merge_max_tokens=0 } = {}){
   
-  
-  const __ORDER = (pack?.order && Array.isArray(pack.order) ? pack.order : ['templates','spec_canvas','diff_slices','linked_tests','contracts','extras']);
-  const __SECTIONS = __normalizeSections(pack, __ORDER);
-// Early feasibility check for non-droppable must_include to surface BUDGET_ERROR before schema validation.
+  // Early feasibility check for non-droppable must_include to surface BUDGET_ERROR before schema validation.
   try {
     const capsEarly = pack?.budgets || {};
     const maxFilesEarly = Number(capsEarly.max_files || 0);
@@ -129,7 +105,7 @@ export async function assemble(pack, { model='default', merge_max_tokens=0 } = {
     for (const s of ORDER) if (!Number.isInteger(sectionCapsEarly[s])) sectionCapsEarly[s] = 0;
     const mustIdsEarly = new Set((pack?.must_include || []).map(x => String(x)));
     if (mustIdsEarly.size > 0) {
-      const sectionsEarly = Array.isArray(pack?.sections) ? __SECTIONS : [];
+      const sectionsEarly = Array.isArray(pack?.sections) ? pack.sections : [];
       for (const name of ORDER) {
         const idx = ORDER.indexOf(name);
         if (idx > NON_DROPPABLE_LAST_INDEX) continue;
@@ -149,27 +125,7 @@ export async function assemble(pack, { model='default', merge_max_tokens=0 } = {
     if (e && e.code === 'BUDGET_ERROR') { throw e; }
   }
 // Validate structure and recompute hash deterministically
-  /*__validate_wrap__*/
-
-  try {
-
-    validateObject(pack, { strictOrder: true });
-
-  } catch (e) {
-
-    const ver = String(pack && pack.version || '');
-
-    if (ver.startsWith('ctxpack.')) {
-
-      // Accept draft-like inputs in tests; skip strict validation.
-
-    } else {
-
-      throw e;
-
-    }
-
-  }
+  validateObject(pack, { strictOrder: true });
   const clone = structuredClone(pack); const got = clone.hash; delete clone.hash;
   const expect = sha256Canonical(clone);
   if (got !== expect) throw new CtxpackError('HASH_MISMATCH', 'pack.hash does not match canonical content');
@@ -192,7 +148,7 @@ export async function assemble(pack, { model='default', merge_max_tokens=0 } = {
 
   
 for (const name of ORDER){
-    const sec = __SECTIONS.find(s => s.name === name) || { name, items: [] };
+    const sec = pack.sections.find(s => s.name === name) || { name, items: [] };
     let items = stableSort(sec.items || []);
 
     // First pass: intra-section dedup with pointers
