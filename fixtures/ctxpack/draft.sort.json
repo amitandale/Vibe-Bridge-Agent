@@ -1,0 +1,78 @@
+{
+  "version": "ctxpack.draft",
+  "project": "demo",
+  "pr": 1,
+  "mode": "mvp",
+  "order": [
+    "templates",
+    "spec_canvas",
+    "diff_slices",
+    "linked_tests",
+    "contracts",
+    "extras"
+  ],
+  "budgets": {
+    "max_tokens": 10000000,
+    "max_files": 1000,
+    "max_per_file_tokens": 10000000,
+    "section_caps": {
+      "templates": {
+        "max_tokens": 10000000,
+        "max_files": 1000
+      },
+      "spec_canvas": {
+        "max_tokens": 10000000,
+        "max_files": 1000
+      },
+      "diff_slices": {
+        "max_tokens": 10000000,
+        "max_files": 1000
+      },
+      "linked_tests": {
+        "max_tokens": 10000000,
+        "max_files": 1000
+      },
+      "contracts": {
+        "max_tokens": 10000000,
+        "max_files": 1000
+      },
+      "extras": {
+        "max_tokens": 10000000,
+        "max_files": 1000
+      }
+    }
+  },
+  "must_include": [],
+  "sections": [
+    {
+      "name": "diff_slices",
+      "items": [
+        {
+          "id": "A",
+          "path": "src\\\\zeta\\\\b.ts",
+          "start_line": 20,
+          "text": "b body"
+        },
+        {
+          "id": "B",
+          "path": "src/alpha/a.ts",
+          "start_line": 10,
+          "text": "a body"
+        },
+        {
+          "id": "C",
+          "path": "src\\\\alpha\\\\a.ts",
+          "start_line": 5,
+          "text": "a header",
+          "symbol": "hdr"
+        },
+        {
+          "id": "D",
+          "path": "src/alpha/a.ts",
+          "start_line": 200,
+          "text": "a tail"
+        }
+      ]
+    }
+  ]
+}
