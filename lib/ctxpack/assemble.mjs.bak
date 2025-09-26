@@ -149,8 +149,7 @@ export async function assemble(pack, { model='default', merge_max_tokens=0 } = {
   }
     const __ORDER = (Array.isArray(pack?.order) && pack.order.length ? pack.order : ['templates','spec_canvas','diff_slices','linked_tests','contracts','extras']);
   const __SECTIONS = __normalizeSections(pack, __ORDER);
-const __ORDER = (pack?.order && Array.isArray(pack.order) ? pack.order : ['templates','spec_canvas','diff_slices','linked_tests','contracts','extras']);
-  const __SECTIONS = __normalizeSections(pack, __ORDER);
+
 // Early feasibility check for non-droppable must_include to surface BUDGET_ERROR before schema validation.
   try {
     const capsEarly = pack?.budgets || {};
